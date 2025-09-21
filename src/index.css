@@ -1,0 +1,248 @@
+@import "tailwindcss";
+/* font */
+@font-face {
+  font-family: Estedad;
+  src: url(/fonts/Estedad-Black.woff2) format("woff2");
+  font-weight: 900;
+}
+@font-face {
+  font-family: Estedad;
+  src: url(/fonts/Estedad-ExtraBold.woff2) format("woff2");
+  font-weight: 800;
+}
+@font-face {
+  font-family: Estedad;
+  src: url(/fonts/Estedad-Bold.woff2) format("woff2");
+  font-weight: 700;
+}
+@font-face {
+  font-family: Estedad;
+  src: url(/fonts/Estedad-SemiBold.woff2) format("woff2");
+  font-weight: 600;
+}
+@font-face {
+  font-family: Estedad;
+  src: url(/fonts/Estedad-Medium.woff2) format("woff2");
+  font-weight: 500;
+}
+@font-face {
+  font-family: Estedad;
+  src: url(/fonts/Estedad-Regular.woff2) format("woff2");
+  font-weight: 400;
+}
+@font-face {
+  font-family: Estedad;
+  src: url(/fonts/Estedad-Light.woff2) format("woff2");
+  font-weight: 300;
+}
+@font-face {
+  font-family: Estedad;
+  src: url(/fonts/Estedad-ExtraLight.woff2) format("woff2");
+  font-weight: 200;
+}
+@font-face {
+  font-family: Estedad;
+  src: url(/fonts/Estedad-Thin.woff2) format("woff2");
+  font-weight: 100;
+}
+/* font */
+/* font-FD */
+@font-face {
+  font-family: Estedad-FD;
+  src: url(/fonts/FD/Estedad-FD-Black.woff2) format("woff2");
+  font-weight: 900;
+}
+@font-face {
+  font-family: Estedad-FD;
+  src: url(/fonts/FD/Estedad-FD-ExtraBold.woff2) format("woff2");
+  font-weight: 800;
+}
+@font-face {
+  font-family: Estedad-FD;
+  src: url(/fonts/FD/Estedad-FD-Bold.woff2) format("woff2");
+  font-weight: 700;
+}
+@font-face {
+  font-family: Estedad-FD;
+  src: url(/fonts/FD/Estedad-FD-SemiBold.woff2) format("woff2");
+  font-weight: 600;
+}
+@font-face {
+  font-family: Estedad-FD;
+  src: url(/fonts/FD/Estedad-FD-Medium.woff2) format("woff2");
+  font-weight: 500;
+}
+@font-face {
+  font-family: Estedad-FD;
+  src: url(/fonts/FD/Estedad-FD-Regular.woff2) format("woff2");
+  font-weight: 400;
+}
+@font-face {
+  font-family: Estedad-FD;
+  src: url(/fonts/FD/Estedad-FD-Light.woff2) format("woff2");
+  font-weight: 300;
+}
+@font-face {
+  font-family: Estedad-FD;
+  src: url(/fonts/FD/Estedad-FD-ExtraLight.woff2) format("woff2");
+  font-weight: 200;
+}
+@font-face {
+  font-family: Estedad-FD;
+  src: url(/fonts/FD/Estedad-FD-Thin.woff2) format("woff2");
+  font-weight: 100;
+}
+/* font-FD */
+
+@theme {
+  /* color */
+  /* blue */
+  --color-blue-10: #f7fbff;
+  --color-blue-20: #e9f4ff;
+  --color-blue-30: #dbedff;
+  --color-blue-40: #cde6ff;
+  --color-blue-50: #bfe0ff;
+  --color-blue-60: #a9cff3;
+  --color-blue-70: #709eca;
+  --color-blue-80: #4374a1;
+  --color-blue-90: #214e79;
+  /* --color-blue-100: #1a1a72; */
+  --color-blue-100: #1a1a72;
+  --color-blue-110: #90e0ef;
+  --color-blue-120: #465fff;
+  /* blue */
+  --color-hover-100: #ecf3ff;
+  /* red */
+  --color-red-10: #ffebea;
+  --color-red-20: #ffc6c5;
+  --color-red-30: #ffa2a1;
+  --color-red-40: #ff7e7c;
+  --color-red-50: #ff5957;
+  --color-red-60: #ff3532;
+  --color-red-70: #e81c19;
+  --color-red-80: #bf0603;
+  --color-red-90: #960300;
+  /* --color-red-100: #6d0200; */
+  --color-red-100: #f10000;
+  /* red */
+  /* font */
+  --font-Estedad: "Estedad";
+  --default-font-family: "Estedad-FD";
+  /* font */
+}
+
+.dark.bg-gradient {
+  background: rgb(39, 42, 55);
+  background: linear-gradient(
+    -60deg,
+    rgb(39, 42, 55, 1) 42%,
+    rgba(39, 42, 55, 0.8) 70%,
+    rgba(39, 42, 55, 0.4) 100%
+  );
+}
+
+/* Basic editor styles */
+.tiptap {
+  :first-child {
+    margin-top: 0;
+  }
+
+  /* List styles */
+  ul,
+  ol {
+    padding: 0 1rem;
+    margin: 1.25rem 1rem 1.25rem 0.4rem;
+
+    li p {
+      margin-top: 0.25em;
+      margin-bottom: 0.25em;
+    }
+  }
+
+  /* Heading styles */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    line-height: 1.1;
+    margin-top: 2.5rem;
+    text-wrap: pretty;
+  }
+
+  h1,
+  h2 {
+    margin-top: 3.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  h1 {
+    font-size: 1.4rem;
+  }
+
+  h2 {
+    font-size: 1.2rem;
+  }
+
+  h3 {
+    font-size: 1.1rem;
+  }
+
+  h4,
+  h5,
+  h6 {
+    font-size: 1rem;
+  }
+
+  /* Code and preformatted text styles */
+  code {
+    background-color: var(--purple-light);
+    border-radius: 0.4rem;
+    color: var(--black);
+    font-size: 0.85rem;
+    padding: 0.25em 0.3em;
+  }
+
+  pre {
+    background: var(--black);
+    border-radius: 0.5rem;
+    color: var(--white);
+    font-family: "JetBrainsMono", monospace;
+    margin: 1.5rem 0;
+    padding: 0.75rem 1rem;
+
+    code {
+      background: none;
+      color: inherit;
+      font-size: 0.8rem;
+      padding: 0;
+    }
+  }
+
+  blockquote {
+    border-left: 3px solid var(--gray-3);
+    margin: 1.5rem 0;
+    padding-left: 1rem;
+  }
+
+  hr {
+    border: none;
+    border-top: 1px solid var(--gray-2);
+    margin: 2rem 0;
+  }
+
+  /* List styles */
+  ul,
+  ol {
+    padding: 0 1rem;
+    margin: 1.25rem 1rem 1.25rem 0.4rem;
+    list-style-type: disc;
+  }
+  li p {
+    margin-top: 0.25em;
+    margin-bottom: 0.25em;
+  }
+
+  
+}
