@@ -14,7 +14,7 @@ const ChatBubble = ({ message, isOwner = false, onDelete, attachments = [], crea
         )}
 
         <div className={`relative rounded-3xl px-5 py-4 shadow-lg break-words
-          ${isOwner ? "bg-blue-600 text-white rounded-tr-3xl rounded-tl-3xl rounded-bl-3xl" 
+          ${isOwner ? "bg-blue-500 text-white rounded-tr-3xl rounded-tl-3xl rounded-bl-3xl" 
                      : "bg-gray-200 text-gray-900 rounded-tr-3xl rounded-tl-3xl rounded-br-3xl"}`}>
           
           <p className="text-base sm:text-lg">{message}</p>
@@ -28,7 +28,7 @@ const ChatBubble = ({ message, isOwner = false, onDelete, attachments = [], crea
                   href={att.url}
                   target="_blank"
                   rel="noreferrer"
-                  className={`flex items-center gap-2 text-sm underline ${isOwner ? "text-blue-100 hover:text-white" : "text-gray-600 hover:text-blue-600"}`}
+                  className={`flex items-center gap-2 text-sm underline ${isOwner ? "text-white-100 hover:text-white" : "text-gray-600 hover:text-blue-600"}`}
                 >
                   <MdAttachFile size={16} />
                   <span>{att.name || att.filename || "دانلود فایل"}</span>
@@ -51,7 +51,7 @@ const ChatBubble = ({ message, isOwner = false, onDelete, attachments = [], crea
 
           {/* زمان پیام */}
           {createdAt && (
-            <div className={`text-[11px] mt-1 ${isOwner ? "text-blue-100 text-right" : "text-gray-500 text-left"}`}>
+            <div className={`text-[11px] mt-1 ${isOwner ? "text-white-100 text-right" : "text-gray-500 text-left"}`}>
               {new Date(createdAt).toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" })}
             </div>
           )}
