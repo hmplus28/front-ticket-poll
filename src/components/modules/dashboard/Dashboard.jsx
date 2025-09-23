@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { TiTicket } from "react-icons/ti";
 import { SiLimesurvey } from "react-icons/si";
@@ -12,68 +12,105 @@ const Dashboard = ({ mobileOpen, setMobileOpen }) => {
   const [activeUnvotedSurveysCount, setActiveUnvotedSurveysCount] = useState(0);
   const navigate = useNavigate();
   const token = localStorage.getItem("authToken");
+  // اضافه کردن useRef برای نگهداری از WebSocket
+  const ws = useRef(null);
+
+  // تابع واکشی اولیه اطلاعات
+  const fetchData = async () => {
+    // ... (کد قبلی شما برای واکشی اطلاعات)
+    try {
+      const headers = { 
+        'Content-Type': 'application/json',
+        'Authorization': `Token ${token}`
+      };
+      
+      const [userRes, ticketsRes, surveysRes] = await Promise.all([
+        fetch("http://localhost:8000/api/accounts/profile/", { headers }),
+        fetch("http://localhost:8000/api/tickets/tickets/my_tickets/", { headers }),
+        fetch("http://localhost:8000/api/polls/accessible-surveys/", { headers }),
+      ]);
+      
+      if (userRes.ok) {
+        const userData = await userRes.json();
+        setUser(userData);
+      } else {
+        throw new Error("Failed to fetch user data");
+      }
+      
+      if (ticketsRes.ok) {
+        const ticketsData = await ticketsRes.json();
+        const openCount = (ticketsData || []).filter(
+          (t) => t.status !== "closed" && t.status !== "rejected"
+        ).length;
+        setOpenTicketsCount(openCount);
+      }
+      
+      if (surveysRes.ok) {
+        const surveysData = await surveysRes.json();
+        const activeUnvotedCount = (surveysData || []).filter(
+          (survey) => survey.is_active && !survey.user_voted
+        ).length;
+        setActiveUnvotedSurveysCount(activeUnvotedCount);
+      }
+      
+    } catch (err) {
+      setUser(null);
+      setOpenTicketsCount(0);
+      setActiveUnvotedSurveysCount(0);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      if (!token) {
-        setLoading(false);
-        navigate("/login");
-        return;
-      }
-      try {
-        const headers = { 
-          'Content-Type': 'application/json',
-          'Authorization': `Token ${token}`
-        };
-        
-        const [userRes, ticketsRes, surveysRes] = await Promise.all([
-          fetch("http://localhost:8000/api/accounts/profile/", { headers }),
-          fetch("http://localhost:8000/api/tickets/tickets/my_tickets/", { headers }),
-          fetch("http://localhost:8000/api/polls/accessible-surveys/", { headers }),
-        ]);
-        
-        // Fetch user data
-        if (userRes.ok) {
-          const userData = await userRes.json();
-          setUser(userData);
-        } else {
-          throw new Error("Failed to fetch user data");
-        }
-        
-        // Fetch tickets and calculate count
-        if (ticketsRes.ok) {
-          const ticketsData = await ticketsRes.json();
-          const openCount = (ticketsData || []).filter(
-            (t) => t.status !== "closed" && t.status !== "rejected"
-          ).length;
-          setOpenTicketsCount(openCount);
-        }
-        
-        // Fetch surveys and calculate count
-        if (surveysRes.ok) {
-          const surveysData = await surveysRes.json();
-          const activeUnvotedCount = (surveysData || []).filter(
-            (survey) => survey.is_active && !survey.user_voted
-          ).length;
-          setActiveUnvotedSurveysCount(activeUnvotedCount);
-        }
-        
-      } catch (err) {
-        setUser(null);
-        setOpenTicketsCount(0);
-        setActiveUnvotedSurveysCount(0);
-      } finally {
-        setLoading(false);
-      }
-    };
+    // واکشی اولیه اطلاعات هنگام بارگذاری کامپوننت
+    if (token) {
+      fetchData();
 
-    fetchData();
+      // ایجاد اتصال WebSocket
+      const socket = new WebSocket(`ws://localhost:8000/ws/notifications/?token=${token}`);
+
+      socket.onopen = () => {
+        console.log("WebSocket connected");
+      };
+
+      // مدیریت پیام‌های دریافتی از سرور
+      socket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.type === "new_notification") {
+          // اگر پیام مربوط به اعلان جدید بود، دوباره اطلاعات را واکشی کن
+          // یا به صورت مستقیم count را بروزرسانی کن
+          fetchData(); 
+        }
+      };
+
+      socket.onclose = () => {
+        console.log("WebSocket disconnected");
+      };
+
+      socket.onerror = (error) => {
+        console.error("WebSocket error:", error);
+      };
+
+      // نگهداری اتصال در useRef
+      ws.current = socket;
+
+      // بستن اتصال هنگام Unmount شدن کامپوننت
+      return () => {
+        if (ws.current) {
+          ws.current.close();
+        }
+      };
+    } else {
+      setLoading(false);
+      navigate("/login");
+    }
   }, [navigate, token]);
 
   const totalNotifications = openTicketsCount + activeUnvotedSurveysCount;
 
-  // 💡 آیتم های منوی بالا را به صورت شرطی بر اساس نقش کاربر تعریف می کنیم.
+  // ... (بقیه کد کامپوننت بدون تغییر)
+  
   const navItemTop = [
     { name: "تیکت", path: "/tickets", icon: <TiTicket className="text-2xl" /> },
     ...(user?.user_type === "employee" ? [{ name: "نظرسنجی", path: "/survey", icon: <SiLimesurvey className="text-2xl" /> }] : []),

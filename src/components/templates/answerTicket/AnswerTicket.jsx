@@ -57,6 +57,10 @@ const AnswerTicket = () => {
     const [confirmModalContent, setConfirmModalContent] = useState({});
     const [confirmAction, setConfirmAction] = useState(null);
 
+    // اضافه: WebSocket ref
+    const wsRef = useRef(null);
+    const currentUserId = useRef(null);  // برای چک isOwner در real-time
+
     const getStoredUserId = () =>
         localStorage.getItem("userId") ||
         localStorage.getItem("userID") ||
@@ -230,6 +234,118 @@ const AnswerTicket = () => {
         setMessagesGroupedByDate(groups);
     }, [messages]);
 
+    useEffect(() => {
+        const init = async () => {
+            await fetchTicketAndMessages();
+            await fetchAvailableStatuses();
+
+            // set currentUserId برای چک real-time
+            const serverUser = await fetchCurrentUserFromServer();
+            currentUserId.current = serverUser?.id || getStoredUserId();
+
+            // اتصال WebSocket
+            if (token && id) {
+                const wsUrl = `ws://127.0.0.1:8000/ws/ticket/${id}/?token=${token}`;
+                wsRef.current = new WebSocket(wsUrl);
+
+                wsRef.current.onopen = () => console.log('WebSocket connected for ticket');
+
+                wsRef.current.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'new_message') {
+                        const newMsg = data.data;
+                        // چک اگر پیام از خود کاربر نباشه (برای جلوگیری از duplicate)
+                        if (String(newMsg.user) !== String(currentUserId.current)) {
+                            const mappedMsg = {
+                                id: newMsg.id,
+                                message: newMsg.message,
+                                isOwner: false,  // چون از دیگران
+                                createdAt: newMsg.created_at,
+                                attachments: newMsg.attachments || [],
+                                username: newMsg.user_username || 'کاربر',
+                                raw_user_id: newMsg.user,
+                            };
+                            setMessages((prev) => [...prev, mappedMsg]);
+                        }
+                    } else if (data.type === 'status_update') {
+                        setTicket((prev) => ({ ...prev, status: data.status }));
+                        setToastMessage({ message: `وضعیت به "${data.status}" تغییر یافت.`, type: "info" });
+                    }
+                };
+
+                wsRef.current.onclose = () => console.log('WebSocket disconnected');
+                wsRef.current.onerror = (error) => console.error('WebSocket error:', error);
+            }
+        };
+        init();
+
+        return () => {
+            if (wsRef.current) wsRef.current.close();
+        };
+    }, [id, token]);
+
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messagesGroupedByDate]);
+
+    useEffect(() => {
+        if (toastMessage.message) {
+            const timer = setTimeout(() => {
+                setToastMessage({ message: "", type: "" });
+            }, 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [toastMessage]);
+
+    const handleSendMessage = async () => {
+        if (!newMessage.trim() && !file) return;
+
+        const formData = new FormData();
+        if (newMessage.trim()) formData.append("message", newMessage);
+        if (file) formData.append("file", file);
+
+        try {
+            const res = await fetch(
+                `http://127.0.0.1:8000/api/tickets/tickets/${id}/messages/`,
+                {
+                    method: "POST",
+                    headers: { Authorization: `Token ${token}` },
+                    body: formData,
+                }
+            );
+
+            if (res.ok) {
+                const newMsgData = await res.json();  // پیام جدید از پاسخ
+                // اضافه به state (برای خود فرستنده، چون broadcast برای دیگرانه)
+                const mappedMsg = {
+                    id: newMsgData.id,
+                    message: newMsgData.message,
+                    isOwner: true,  // چون خود فرستنده
+                    createdAt: newMsgData.created_at,
+                    attachments: newMsgData.attachments || [],
+                    username: getStoredUsername() || 'من',
+                };
+                setMessages((prev) => [...prev, mappedMsg]);
+                setNewMessage("");
+                setFile(null);
+                if (fileInputRef.current) fileInputRef.current.value = null;
+
+                const storedUserId = getStoredUserId();
+                const ticketUserId = ticket?.user;
+
+                if (storedUserId && ticketUserId && String(storedUserId) === String(ticketUserId)) {
+                    if (ticket.status !== 'in_progress') {
+                        sendUpdateStatus('in_progress');
+                    }
+                }
+            } else {
+                setToastMessage({ message: "خطا در ارسال پیام.", type: "error" });
+            }
+        } catch (err) {
+            setToastMessage({ message: "خطای شبکه در ارسال پیام.", type: "error" });
+        }
+    };
+    
     const handleUpdateStatus = async (status) => {
         setShowConfirmModal(false);
         if (!status || status === ticket.status) return;
@@ -270,6 +386,8 @@ const AnswerTicket = () => {
                 },
                 body: JSON.stringify({ status }),
             });
+            // آپدیت محلی (broadcast برای دیگران)
+            setTicket((prev) => ({ ...prev, status }));
         } catch (err) {
         }
     };
@@ -285,63 +403,6 @@ const AnswerTicket = () => {
         setShowConfirmModal(true);
     };
 
-    useEffect(() => {
-        fetchTicketAndMessages();
-        fetchAvailableStatuses();
-    }, [id, token]);
-
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messagesGroupedByDate]);
-
-    useEffect(() => {
-        if (toastMessage.message) {
-            const timer = setTimeout(() => {
-                setToastMessage({ message: "", type: "" });
-            }, 3000);
-            return () => clearTimeout(timer);
-        }
-    }, [toastMessage]);
-
-    const handleSendMessage = async () => {
-        if (!newMessage.trim() && !file) return;
-
-        const formData = new FormData();
-        if (newMessage.trim()) formData.append("message", newMessage);
-        if (file) formData.append("file", file);
-
-        try {
-            const res = await fetch(
-                `http://127.0.0.1:8000/api/tickets/tickets/${id}/messages/`,
-                {
-                    method: "POST",
-                    headers: { Authorization: `Token ${token}` },
-                    body: formData,
-                }
-            );
-
-            if (res.ok) {
-                setNewMessage("");
-                setFile(null);
-                if (fileInputRef.current) fileInputRef.current.value = null;
-                await fetchTicketAndMessages();
-
-                const storedUserId = getStoredUserId();
-                const ticketUserId = ticket?.user;
-
-                if (storedUserId && ticketUserId && String(storedUserId) === String(ticketUserId)) {
-                    if (ticket.status !== 'in_progress') {
-                        sendUpdateStatus('in_progress');
-                    }
-                }
-            } else {
-                setToastMessage({ message: "خطا در ارسال پیام.", type: "error" });
-            }
-        } catch (err) {
-            setToastMessage({ message: "خطای شبکه در ارسال پیام.", type: "error" });
-        }
-    };
-    
     const handleConfirmDelete = async (messageId) => {
         setShowConfirmModal(false);
         try {
@@ -430,12 +491,17 @@ const AnswerTicket = () => {
                         <div className="flex items-center gap-2">
                             <MdApartment className="text-purple-500" />
                             <span className="font-semibold">دپارتمان:</span>
-                            <span>{ticket.department_name}</span>
+                            <span>{ticket.department_name || "—"}</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <MdApartment className="text-indigo-500" />
                             <span className="font-semibold">بخش:</span>
-                            <span>{ticket.sections_names}</span>
+                            <span>{ticket.sections_names || "—"}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <MdApartment className="text-indigo-500" />
+                            <span className="font-semibold">نقش:</span>
+                            <span>{ticket.roles_names || "—"}</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <MdOutlineInfo className="text-orange-500" />
