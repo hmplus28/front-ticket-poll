@@ -3,21 +3,24 @@ import { MdDelete, MdAttachFile } from "react-icons/md";
 
 const ChatBubble = ({ message, isOwner = false, onDelete, attachments = [], createdAt, username, isInitial }) => {
   return (
-    <div className={`w-full flex ${isOwner ? "justify-end" : "justify-start"} px-2`}>
+    <div className={`w-full flex ${isOwner ? "justify-end" : "justify-start"}`}>
       <div className={`max-w-[80%] sm:max-w-md flex flex-col ${isOwner ? "items-end" : "items-start"}`}>
         
         {/* نام کاربر (پیام اولیه نمایش داده نشود) */}
         {!isInitial && (
-          <div className={`text-sm font-semibold mb-1 ${isOwner ? "text-blue-700" : "text-gray-700"}`}>
+          <div className={`text-sm font-semibold mb-1 px-2 ${isOwner ? "text-blue-700" : "text-gray-700"}`}>
             {username || (isOwner ? "شما" : "کاربر")}
           </div>
         )}
 
-        <div className={`relative rounded-3xl px-5 py-4 shadow-lg break-words
-          ${isOwner ? "bg-blue-500 text-white rounded-tr-3xl rounded-tl-3xl rounded-bl-3xl" 
-                     : "bg-gray-200 text-gray-900 rounded-tr-3xl rounded-tl-3xl rounded-br-3xl"}`}>
+        {/* حباب اصلی چت */}
+        <div 
+          className={`relative px-5 py-4 shadow-md break-words group 
+            ${isOwner ? "bg-blue-500 text-white rounded-t-xl rounded-l-xl rounded-br-xl rounded-bl-none" 
+                       : "bg-gray-200 text-gray-900 rounded-t-xl rounded-r-xl rounded-bl-xl rounded-br-none"}`}
+        >
           
-          <p className="text-base sm:text-lg">{message}</p>
+          <p className="text-base sm:text-lg whitespace-pre-wrap">{message}</p>
 
           {/* فایل‌ها */}
           {attachments && attachments.length > 0 && (
@@ -28,7 +31,7 @@ const ChatBubble = ({ message, isOwner = false, onDelete, attachments = [], crea
                   href={att.url}
                   target="_blank"
                   rel="noreferrer"
-                  className={`flex items-center gap-2 text-sm underline ${isOwner ? "text-white-100 hover:text-white" : "text-gray-600 hover:text-blue-600"}`}
+                  className={`flex items-center gap-2 text-sm underline ${isOwner ? "text-blue-100 hover:text-white" : "text-gray-600 hover:text-blue-600"}`}
                 >
                   <MdAttachFile size={16} />
                   <span>{att.name || att.filename || "دانلود فایل"}</span>
@@ -37,24 +40,25 @@ const ChatBubble = ({ message, isOwner = false, onDelete, attachments = [], crea
             </div>
           )}
 
-          {/* دکمه حذف */}
-          {onDelete && (
-            <button
-              onClick={onDelete}
-              title="حذف"
-              className={`absolute top-2 ${isOwner ? "right-2" : "left-2"} text-xs
-                ${isOwner ? "text-blue-100 hover:text-white" : "text-gray-500 hover:text-red-500"}`}
-            >
-              <MdDelete size={18} />
-            </button>
-          )}
-
-          {/* زمان پیام */}
-          {createdAt && (
-            <div className={`text-[11px] mt-1 ${isOwner ? "text-white-100 text-right" : "text-gray-500 text-left"}`}>
-              {new Date(createdAt).toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" })}
-            </div>
-          )}
+          {/* زمان و دکمه حذف */}
+          <div className={`flex items-center mt-2 gap-2 text-xs
+            ${isOwner ? "justify-start flex-row-reverse" : "justify-start"}`}>
+            {createdAt && (
+              <span className={`${isOwner ? "text-blue-100" : "text-gray-500"}`}>
+                {new Date(createdAt).toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            )}
+            {onDelete && (
+              <button
+                onClick={onDelete}
+                title="حذف"
+                className={`flex items-center justify-center p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300
+                  ${isOwner ? "text-blue-100 hover:text-white hover:bg-white/10" : "text-gray-500 hover:text-red-500 hover:bg-gray-300"}`}
+              >
+                <MdDelete size={14} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

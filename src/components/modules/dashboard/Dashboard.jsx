@@ -1,14 +1,82 @@
-import React from "react";
-import { NavLink } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
 import { TiTicket } from "react-icons/ti";
 import { SiLimesurvey } from "react-icons/si";
 import { IoNotifications } from "react-icons/io5";
 import { FaUtensils, FaUniversity, FaChalkboardTeacher, FaGlobe, FaRobot } from "react-icons/fa";
 
 const Dashboard = ({ mobileOpen, setMobileOpen }) => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [openTicketsCount, setOpenTicketsCount] = useState(0);
+  const [activeUnvotedSurveysCount, setActiveUnvotedSurveysCount] = useState(0);
+  const navigate = useNavigate();
+  const token = localStorage.getItem("authToken");
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      if (!token) {
+        setLoading(false);
+        navigate("/login");
+        return;
+      }
+      try {
+        const headers = { 
+          'Content-Type': 'application/json',
+          'Authorization': `Token ${token}`
+        };
+        
+        const [userRes, ticketsRes, surveysRes] = await Promise.all([
+          fetch("http://localhost:8000/api/accounts/profile/", { headers }),
+          fetch("http://localhost:8000/api/tickets/tickets/my_tickets/", { headers }),
+          fetch("http://localhost:8000/api/polls/accessible-surveys/", { headers }),
+        ]);
+        
+        // Fetch user data
+        if (userRes.ok) {
+          const userData = await userRes.json();
+          setUser(userData);
+        } else {
+          throw new Error("Failed to fetch user data");
+        }
+        
+        // Fetch tickets and calculate count
+        if (ticketsRes.ok) {
+          const ticketsData = await ticketsRes.json();
+          const openCount = (ticketsData || []).filter(
+            (t) => t.status !== "closed" && t.status !== "rejected"
+          ).length;
+          setOpenTicketsCount(openCount);
+        }
+        
+        // Fetch surveys and calculate count
+        if (surveysRes.ok) {
+          const surveysData = await surveysRes.json();
+          const activeUnvotedCount = (surveysData || []).filter(
+            (survey) => survey.is_active && !survey.user_voted
+          ).length;
+          setActiveUnvotedSurveysCount(activeUnvotedCount);
+        }
+        
+      } catch (err) {
+        setUser(null);
+        setOpenTicketsCount(0);
+        setActiveUnvotedSurveysCount(0);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [navigate, token]);
+
+  const totalNotifications = openTicketsCount + activeUnvotedSurveysCount;
+
+  // 💡 آیتم های منوی بالا را به صورت شرطی بر اساس نقش کاربر تعریف می کنیم.
   const navItemTop = [
     { name: "تیکت", path: "/tickets", icon: <TiTicket className="text-2xl" /> },
-    { name: "نظرسنجی", path: "/survey", icon: <SiLimesurvey className="text-2xl" /> },
+    ...(user?.user_type === "employee" ? [{ name: "نظرسنجی", path: "/survey", icon: <SiLimesurvey className="text-2xl" /> }] : []),
     { name: "اعلان", path: "/notifications", icon: <IoNotifications className="text-2xl" /> },
     { name: "دستیار هوش مصنوعی", path: "/ai-assistant", icon: <FaRobot className="text-2xl text-purple-500" />, color: "text-purple-500" },
   ];
@@ -21,14 +89,15 @@ const Dashboard = ({ mobileOpen, setMobileOpen }) => {
   ];
 
   const renderNav = (items) =>
-    items.map((item) =>
-      item.path.startsWith("http") ? (
+    items.map((item) => {
+      const isNotifications = item.name === "اعلان";
+      return item.path.startsWith("http") ? (
         <a
           href={item.path}
           target="_blank"
           rel="noopener noreferrer"
           key={item.name}
-          className={`flex items-center h-10 p-4 rounded-lg gap-x-4 hover:bg-slate-100 transition-all duration-500 ease-in-out font-medium ${item.color}`}
+          className={`relative flex items-center h-10 p-4 rounded-lg gap-x-4 hover:bg-slate-100 transition-all duration-500 ease-in-out font-medium ${item.color}`}
         >
           {item.icon}
           <span className={`text-lg font-Estedad ${item.color}`}>{item.name}</span>
@@ -38,15 +107,28 @@ const Dashboard = ({ mobileOpen, setMobileOpen }) => {
           to={item.path}
           key={item.name}
           className={({ isActive }) =>
-            `${isActive ? "bg-hover-100 font-bold text-blue-120" : "text-slate-500 font-medium"} h-10 flex items-center p-4 rounded-lg gap-x-4 hover:bg-slate-100 transition-all duration-500 ease-in-out`
+            `relative ${isActive ? "bg-hover-100 font-bold text-blue-120" : "text-slate-500 font-medium"} h-10 flex items-center p-4 rounded-lg gap-x-4 hover:bg-slate-100 transition-all duration-500 ease-in-out`
           }
           onClick={() => setMobileOpen(false)}
         >
           {item.icon}
           <span className={`text-lg font-Estedad ${item.color || ""}`}>{item.name}</span>
+          {isNotifications && totalNotifications > 0 && (
+            <span className="absolute top-2 left-2 transform -translate-x-1/2 -translate-y-1/2 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full leading-none">
+              {totalNotifications}
+            </span>
+          )}
         </NavLink>
-      )
+      );
+    });
+
+  if (loading) {
+    return (
+      <div className="lg:sticky lg:h-screen lg:pt-14 flex items-center justify-center w-80">
+        در حال بارگذاری...
+      </div>
     );
+  }
 
   return (
     <>
