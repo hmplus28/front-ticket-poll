@@ -5,10 +5,12 @@ const AddSurvey = () => {
   const navigate = useNavigate();
   const [departments, setDepartments] = useState([]);
   const [sections, setSections] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [form, setForm] = useState({
     question_type: "",
     department: "",
     section: "",
+    role: "",
     question: "",
     options: ["", "", "", ""],
   });
@@ -19,6 +21,7 @@ const AddSurvey = () => {
 
   const token = localStorage.getItem("authToken");
 
+  // دریافت داده‌های اولیه
   useEffect(() => {
     if (!token) {
       navigate("/login");
@@ -39,17 +42,26 @@ const AddSurvey = () => {
         setLoading(false);
       }
     };
-
     fetchData();
   }, [navigate, token]);
 
+  // دریافت بخش‌ها (برای دپارتمان‌های غیردانشجویی)
   useEffect(() => {
     if (!form.department) {
       setSections([]);
-      setForm((prev) => ({ ...prev, section: "" }));
+      setForm((prev) => ({ ...prev, section: "", role: "" }));
       return;
     }
 
+    const selectedDepartment = departments.find(d => d.id === parseInt(form.department));
+    const isStudentsDepartment = selectedDepartment && selectedDepartment.name === "دانشجویان";
+
+    if (isStudentsDepartment) {
+      setSections([]);
+      setForm((prev) => ({ ...prev, section: "", role: "" }));
+      return;
+    }
+    
     const fetchSections = async () => {
       try {
         const headers = { Authorization: `Token ${token}` };
@@ -57,9 +69,7 @@ const AddSurvey = () => {
           `http://localhost:8000/api/tickets/sections/?department_id=${form.department}`,
           { headers }
         );
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         const data = await res.json();
         setSections(Array.isArray(data) ? data : []);
       } catch (err) {
@@ -69,13 +79,46 @@ const AddSurvey = () => {
         setMessageType("error");
       }
     };
-
     fetchSections();
-  }, [form.department, token]);
+  }, [form.department, token, departments]);
+
+  // دریافت نقش‌ها (فقط برای دپارتمان دانشجویان)
+  useEffect(() => {
+    const selectedDepartment = departments.find(d => d.id === parseInt(form.department));
+    const isStudentsDepartment = selectedDepartment && selectedDepartment.name === "دانشجویان";
+
+    if (!isStudentsDepartment || !form.section) {
+      setRoles([]);
+      setForm((prev) => ({ ...prev, role: "" }));
+      return;
+    }
+    
+    const fetchRoles = async () => {
+      try {
+        const headers = { Authorization: `Token ${token}` };
+        const res = await fetch(
+          `http://localhost:8000/api/tickets/roles/?section_id=${form.section}`,
+          { headers }
+        );
+        const data = await res.json();
+        setRoles(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("خطا در دریافت نقش‌ها:", err);
+        setRoles([]);
+      }
+    };
+    fetchRoles();
+  }, [form.section, token, form.department, departments]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    if (name === "department") {
+        setForm((prev) => ({ ...prev, [name]: value, section: "", role: "" }));
+    } else if (name === "section") {
+        setForm((prev) => ({ ...prev, [name]: value, role: "" }));
+    } else {
+        setForm((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleOptionChange = (index, value) => {
@@ -87,21 +130,43 @@ const AddSurvey = () => {
   const handleSubmit = async () => {
     setMessage(null);
 
-    if (
-      !form.question_type ||
-      !form.department ||
-      !form.section ||
-      !form.question
-    ) {
+    const selectedDepartment = departments.find(d => d.id === parseInt(form.department));
+    const isStudentsDepartment = selectedDepartment && selectedDepartment.name === "دانشجویان";
+
+    if (!form.question_type || !form.department || !form.question) {
       setMessage("لطفاً تمام فیلدهای ضروری را پر کنید.");
       setMessageType("error");
       return;
     }
+    
+    // اعتبارسنجی شرطی
+    if (!isStudentsDepartment) {
+      if (!form.section) {
+        setMessage("انتخاب بخش الزامی است.");
+        setMessageType("error");
+        return;
+      }
+    } else { // اگر دپارتمان دانشجویان باشد
+      if (form.question_type === "single_choice" && form.options.some((opt) => !opt.trim())) {
+        setMessage("لطفاً تمام گزینه‌ها را پر کنید.");
+        setMessageType("error");
+        return;
+      }
+    }
 
-    if (form.question_type === "single_choice" && form.options.some((opt) => !opt.trim())) {
-      setMessage("لطفاً تمام گزینه‌ها را پر کنید.");
-      setMessageType("error");
-      return;
+    const dataToSend = {
+      question_type: form.question_type,
+      question: form.question,
+      department: form.department,
+      choices: form.question_type === "single_choice" ? form.options.map(text => ({ text })) : [],
+    };
+
+    // 💡 اضافه کردن فیلدهای اختیاری تنها در صورت داشتن مقدار
+    if (form.section) {
+        dataToSend.section = form.section;
+    }
+    if (form.role) {
+        dataToSend.role = form.role;
     }
 
     try {
@@ -111,13 +176,7 @@ const AddSurvey = () => {
           "Content-Type": "application/json",
           Authorization: `Token ${token}`,
         },
-        body: JSON.stringify({
-          question_type: form.question_type,
-          question: form.question,
-          department: form.department,
-          section: form.section,
-          choices: form.question_type === "single_choice" ? form.options.map(text => ({ text })) : [],
-        }),
+        body: JSON.stringify(dataToSend),
       });
 
       if (!res.ok) {
@@ -145,6 +204,9 @@ const AddSurvey = () => {
       </div>
     );
   }
+
+  const selectedDepartment = departments.find(d => d.id === parseInt(form.department));
+  const isStudentsDepartment = selectedDepartment && selectedDepartment.name === "دانشجویان";
 
   return (
     <div className="container mx-auto px-4 py-4 sm:px-6 sm:py-6 max-w-2xl">
@@ -186,22 +248,60 @@ const AddSurvey = () => {
             </option>
           ))}
         </select>
-        <select
-          name="section"
-          value={form.section}
-          onChange={handleChange}
-          className="w-full border-2 border-slate-300 h-10 rounded-md px-3 text-sm text-gray-700 bg-white font-Estedad"
-          disabled={!form.department}
-        >
-          <option value="" hidden>
-            انتخاب بخش
-          </option>
-          {sections.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
+
+        {isStudentsDepartment ? (
+            <>
+                <select
+                name="section"
+                value={form.section}
+                onChange={handleChange}
+                className="w-full border-2 border-slate-300 h-10 rounded-md px-3 text-sm text-gray-700 bg-white font-Estedad"
+                disabled={!form.department}
+                >
+                <option value="" hidden>
+                    انتخاب بخش (اختیاری)
+                </option>
+                {sections.map((s) => (
+                    <option key={s.id} value={s.id}>
+                    {s.name}
+                    </option>
+                ))}
+                </select>
+                <select
+                name="role"
+                value={form.role}
+                onChange={handleChange}
+                className="w-full border-2 border-slate-300 h-10 rounded-md px-3 text-sm text-gray-700 bg-white font-Estedad"
+                disabled={!form.section}
+                >
+                <option value="" hidden>
+                    انتخاب نقش (اختیاری)
+                </option>
+                {roles.map((r) => (
+                    <option key={r.id} value={r.id}>
+                    {r.name}
+                    </option>
+                ))}
+                </select>
+            </>
+        ) : (
+            <select
+            name="section"
+            value={form.section}
+            onChange={handleChange}
+            className="w-full border-2 border-slate-300 h-10 rounded-md px-3 text-sm text-gray-700 bg-white font-Estedad"
+            disabled={!form.department}
+            >
+            <option value="" hidden>
+                انتخاب بخش
             </option>
-          ))}
-        </select>
+            {sections.map((s) => (
+                <option key={s.id} value={s.id}>
+                {s.name}
+                </option>
+            ))}
+            </select>
+        )}
       </div>
 
       <div className="mt-6 p-4 border-2 border-slate-300 rounded-md bg-white">

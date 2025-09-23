@@ -100,7 +100,7 @@ const SurveyResults = () => {
       ) : (
         hasResults ? (
           <div className="space-y-4">
-            {Object.values(poll.results).map((choice) => (
+            {Object.values(poll.results).filter(value => typeof value === 'object').map((choice) => (
               <div key={choice.text} className="border p-4 rounded-md shadow-sm">
                 <div className="flex justify-between items-center mb-1">
                   <span className="font-semibold">{choice.text}</span>

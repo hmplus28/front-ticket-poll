@@ -130,7 +130,7 @@ const Notifications = () => {
   }
 
   const openTicketsCount = tickets.filter(
-    (t) => t.status !== "closed" && t.status !== "rejected"
+    (t) => t.status !== "closed" && t.status !== "rejected" && t.status !== "done"
   ).length;
 
   // محاسبه تعداد نظرسنجی‌های فعال و پرنشده

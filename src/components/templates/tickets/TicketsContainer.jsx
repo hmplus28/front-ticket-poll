@@ -8,9 +8,7 @@ const TicketsContainer = () => {
   useEffect(() => {
     const fetchTickets = async () => {
       try {
-        // گرفتن توکن از localStorage
         const token = localStorage.getItem("authToken");
-
         if (!token) {
           console.error("توکن ورود پیدا نکرده است");
           setLoading(false);
@@ -22,7 +20,7 @@ const TicketsContainer = () => {
           {
             headers: {
               "Content-Type": "application/json",
-              "Authorization": `Token ${token}`, // اضافه کردن توکن
+              "Authorization": `Token ${token}`,
             },
           }
         );
@@ -34,7 +32,7 @@ const TicketsContainer = () => {
         }
 
         const data = await res.json();
-        const validTickets = data ? data.filter(item => item && item.id) : [];
+        const validTickets = data ? data.filter((item) => item && item.id) : [];
         setTickets(validTickets);
       } catch (err) {
         console.error("خطا در ارتباط با سرور:", err);
@@ -54,17 +52,8 @@ const TicketsContainer = () => {
     );
   }
 
-  // نمایش پیام وقتی تیکتی موجود نیست
-  if (tickets.length === 0) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center text-gray-400">
-        <p className="text-lg font-semibold">تیکتی موجود نیست</p>
-        <p className="text-sm mt-2">هنوز هیچ تیکتی ثبت نشده است.</p>
-      </div>
-    );
-  }
-
-  return <Tickets tickets={tickets} />;
+  // همیشه Tickets رو رندر می‌کنیم، حتی وقتی خالیه
+  return <Tickets tickets={tickets} showAddButton={true} />;
 };
 
 export default TicketsContainer;

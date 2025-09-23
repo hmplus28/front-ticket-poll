@@ -6,20 +6,18 @@ const AddTicket = () => {
   const [departments, setDepartments] = useState([]);
   const [sections, setSections] = useState([]);
   const [roles, setRoles] = useState([]);
-  const [tags, setTags] = useState([]);
   const [formData, setFormData] = useState({
     title: "",
     department: "",
     section: "",
     role: "",
-    tag: "",
     priority: "",
     description: "",
   });
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // دریافت داده‌های اولیه دپارتمان و برچسب‌ها
+  // دریافت داده‌های اولیه دپارتمان و فیلتر کردن دپارتمان دانشجویان
   useEffect(() => {
     const fetchDropdownData = async () => {
       try {
@@ -28,24 +26,22 @@ const AddTicket = () => {
           navigate("/login");
           return;
         }
-        const headers = { "Authorization": `Token ${token}` };
+        const headers = { Authorization: `Token ${token}` };
+
         const departmentsRes = await fetch(
           "http://localhost:8000/api/tickets/departments/",
           { headers }
         );
         const departmentsData = await departmentsRes.json();
-        setDepartments(Array.isArray(departmentsData) ? departmentsData : []);
+        // 💡 فیلتر کردن دپارتمان "دانشجویان"
+        const filteredDepartments = Array.isArray(departmentsData)
+          ? departmentsData.filter((dep) => dep.name !== "دانشجویان")
+          : [];
+        setDepartments(filteredDepartments);
 
-        const staticTags = [
-          { id: 1, name: "فنی" },
-          { id: 2, name: "مالی" },
-          { id: 3, name: "عمومی" },
-        ];
-        setTags(staticTags);
       } catch (err) {
         console.error("خطا در دریافت داده‌ها:", err);
         setDepartments([]);
-        setTags([]);
       } finally {
         setLoading(false);
       }
@@ -63,7 +59,7 @@ const AddTicket = () => {
     const fetchSections = async () => {
       try {
         const token = localStorage.getItem("authToken");
-        const headers = { "Authorization": `Token ${token}` };
+        const headers = { Authorization: `Token ${token}` };
         const res = await fetch(
           `http://localhost:8000/api/tickets/sections/?department_id=${formData.department}`,
           { headers }
@@ -88,7 +84,7 @@ const AddTicket = () => {
     const fetchRoles = async () => {
       try {
         const token = localStorage.getItem("authToken");
-        const headers = { "Authorization": `Token ${token}` };
+        const headers = { Authorization: `Token ${token}` };
         const res = await fetch(
           `http://localhost:8000/api/tickets/roles/?section_id=${formData.section}`,
           { headers }
@@ -129,17 +125,36 @@ const AddTicket = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // 💡 اعتبار سنجی فیلدهای اجباری
+    if (!formData.title.trim()) {
+      alert("عنوان تیکت الزامی است.");
+      return;
+    }
+    if (!formData.department) {
+      alert("انتخاب دپارتمان الزامی است.");
+      return;
+    }
+    if (!formData.section) {
+      alert("انتخاب بخش الزامی است.");
+      return;
+    }
+    if (!formData.role) {
+      alert("انتخاب نقش الزامی است.");
+      return;
+    }
+    if (!formData.description.trim()) {
+      alert("متن تیکت (توضیحات) الزامی است.");
+      return;
+    }
+    if (!formData.priority) {
+      alert("انتخاب اولویت الزامی است.");
+      return;
+    }
+    
     const dataToSend = new FormData();
     for (const key in formData) {
-      if (
-        key === "department" ||
-        key === "section" ||
-        key === "title" ||
-        key === "role" ||
-        key === "tag" ||
-        key === "priority" ||
-        key === "description"
-      ) {
+      if (formData[key]) { // فقط فیلدهایی که مقدار دارند ارسال می‌شوند
         dataToSend.append(key, formData[key]);
       }
     }
@@ -149,7 +164,7 @@ const AddTicket = () => {
       const token = localStorage.getItem("authToken");
       const res = await fetch("http://localhost:8000/api/tickets/tickets/", {
         method: "POST",
-        headers: { "Authorization": `Token ${token}` },
+        headers: { Authorization: `Token ${token}` },
         body: dataToSend,
         credentials: "include",
       });
@@ -192,6 +207,7 @@ const AddTicket = () => {
 
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-2 gap-3 mt-6 px-24">
+          {/* عنوان */}
           <div className="w-full">
             <input
               placeholder="عنوان را وارد کنید . . ."
@@ -203,6 +219,7 @@ const AddTicket = () => {
             />
           </div>
 
+          {/* دپارتمان */}
           <div className="w-full">
             <select
               name="department"
@@ -221,13 +238,13 @@ const AddTicket = () => {
             </select>
           </div>
 
+          {/* بخش */}
           <div className="w-full">
             <select
               name="section"
               value={formData.section}
               onChange={handleInputChange}
               className="w-full border-2 border-slate-300 h-10 rounded-md px-3 text-sm font-medium text-gray-700 bg-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 hover:border-blue-400"
-              disabled={!formData.department}
             >
               <option className="text-gray-700 bg-white" value="">
                 انتخاب بخش
@@ -240,13 +257,13 @@ const AddTicket = () => {
             </select>
           </div>
 
+          {/* نقش */}
           <div className="w-full">
             <select
               name="role"
               value={formData.role}
               onChange={handleInputChange}
               className="w-full border-2 border-slate-300 h-10 rounded-md px-3 text-sm font-medium text-gray-700 bg-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 hover:border-blue-400"
-              disabled={!formData.section}
             >
               <option className="text-gray-700 bg-white" value="">
                 انتخاب نقش
@@ -259,24 +276,7 @@ const AddTicket = () => {
             </select>
           </div>
 
-          <div className="w-full">
-            <select
-              name="tag"
-              value={formData.tag}
-              onChange={handleInputChange}
-              className="w-full border-2 border-slate-300 h-10 rounded-md px-3 text-sm font-medium text-gray-700 bg-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 hover:border-blue-400"
-            >
-              <option className="text-gray-700 bg-white" value="">
-                انتخاب برچسب (اختیاری)
-              </option>
-              {tags.map((tag) => (
-                <option key={tag.id} value={tag.id}>
-                  {tag.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
+          {/* اولویت */}
           <div className="w-full">
             <select
               name="priority"
@@ -302,6 +302,7 @@ const AddTicket = () => {
             </select>
           </div>
 
+          {/* توضیحات */}
           <div className="w-full col-span-2">
             <textarea
               name="description"
@@ -312,6 +313,7 @@ const AddTicket = () => {
             ></textarea>
           </div>
 
+          {/* آپلود فایل */}
           <div
             className="w-full col-span-2 h-32 border-2 border-dashed border-gray-300 rounded-md flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 transition-colors relative"
             onDrop={handleDrop}

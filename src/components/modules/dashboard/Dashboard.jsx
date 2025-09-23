@@ -12,12 +12,9 @@ const Dashboard = ({ mobileOpen, setMobileOpen }) => {
   const [activeUnvotedSurveysCount, setActiveUnvotedSurveysCount] = useState(0);
   const navigate = useNavigate();
   const token = localStorage.getItem("authToken");
-  // اضافه کردن useRef برای نگهداری از WebSocket
   const ws = useRef(null);
 
-  // تابع واکشی اولیه اطلاعات
   const fetchData = async () => {
-    // ... (کد قبلی شما برای واکشی اطلاعات)
     try {
       const headers = { 
         'Content-Type': 'application/json',
@@ -40,7 +37,8 @@ const Dashboard = ({ mobileOpen, setMobileOpen }) => {
       if (ticketsRes.ok) {
         const ticketsData = await ticketsRes.json();
         const openCount = (ticketsData || []).filter(
-          (t) => t.status !== "closed" && t.status !== "rejected"
+          // 💡 فیلتر کردن تیکت‌های 'done' نیز برای شمارش
+          (t) => t.status !== "closed" && t.status !== "rejected" && t.status !== "done"
         ).length;
         setOpenTicketsCount(openCount);
       }
@@ -63,23 +61,18 @@ const Dashboard = ({ mobileOpen, setMobileOpen }) => {
   };
 
   useEffect(() => {
-    // واکشی اولیه اطلاعات هنگام بارگذاری کامپوننت
     if (token) {
       fetchData();
 
-      // ایجاد اتصال WebSocket
       const socket = new WebSocket(`ws://localhost:8000/ws/notifications/?token=${token}`);
 
       socket.onopen = () => {
         console.log("WebSocket connected");
       };
 
-      // مدیریت پیام‌های دریافتی از سرور
       socket.onmessage = (event) => {
         const data = JSON.parse(event.data);
         if (data.type === "new_notification") {
-          // اگر پیام مربوط به اعلان جدید بود، دوباره اطلاعات را واکشی کن
-          // یا به صورت مستقیم count را بروزرسانی کن
           fetchData(); 
         }
       };
@@ -92,10 +85,8 @@ const Dashboard = ({ mobileOpen, setMobileOpen }) => {
         console.error("WebSocket error:", error);
       };
 
-      // نگهداری اتصال در useRef
       ws.current = socket;
 
-      // بستن اتصال هنگام Unmount شدن کامپوننت
       return () => {
         if (ws.current) {
           ws.current.close();
@@ -109,8 +100,6 @@ const Dashboard = ({ mobileOpen, setMobileOpen }) => {
 
   const totalNotifications = openTicketsCount + activeUnvotedSurveysCount;
 
-  // ... (بقیه کد کامپوننت بدون تغییر)
-  
   const navItemTop = [
     { name: "تیکت", path: "/tickets", icon: <TiTicket className="text-2xl" /> },
     ...(user?.user_type === "employee" ? [{ name: "نظرسنجی", path: "/survey", icon: <SiLimesurvey className="text-2xl" /> }] : []),
