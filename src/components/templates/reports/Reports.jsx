@@ -1,3 +1,5 @@
+// Reports.js
+
 import React, { useState, useEffect } from "react";
 import { 
   FaChartBar, 
@@ -12,7 +14,9 @@ import {
   FaExclamationTriangle,
   FaFileExcel,
   FaFilter,
-  FaTimes
+  FaTimes,
+  FaClock,
+  FaHourglassHalf
 } from "react-icons/fa";
 
 const Reports = () => {
@@ -28,6 +32,8 @@ const Reports = () => {
       open: 0,
       in_progress: 0,
       done: 0,
+      avg_response_time: 0,
+      avg_resolution_time: 0,
     },
     polls: {
       total: 0,
@@ -37,6 +43,7 @@ const Reports = () => {
     departments: [],
     sections: [],
     roles: [],
+    tickets_details: [],
   });
   
   const [loading, setLoading] = useState(true);
@@ -70,15 +77,49 @@ const Reports = () => {
           }
         });
         
-        if (reportsRes.ok && departmentsRes.ok) {
+        // دریافت جزئیات تیکت‌ها
+        const ticketsRes = await fetch("http://localhost:8000/api/tickets/tickets/", {
+          headers: {
+            'Authorization': `Token ${token}`
+          }
+        });
+        
+        if (reportsRes.ok && departmentsRes.ok && ticketsRes.ok) {
           const reportsData = await reportsRes.json();
           const departmentsData = await departmentsRes.json();
+          const ticketsData = await ticketsRes.json();
+          
+          // محاسبه میانگین زمان پاسخگویی و حل تیکت‌ها
+          let totalResponseTime = 0;
+          let totalResolutionTime = 0;
+          let responseTimeCount = 0;
+          let resolutionTimeCount = 0;
+          
+          ticketsData.forEach(ticket => {
+            if (ticket.response_duration_minutes) {
+              totalResponseTime += ticket.response_duration_minutes;
+              responseTimeCount++;
+            }
+            if (ticket.resolution_duration_hours) {
+              totalResolutionTime += ticket.resolution_duration_hours;
+              resolutionTimeCount++;
+            }
+          });
+          
+          const avgResponseTime = responseTimeCount > 0 ? Math.round(totalResponseTime / responseTimeCount) : 0;
+          const avgResolutionTime = resolutionTimeCount > 0 ? Math.round(totalResolutionTime / resolutionTimeCount) : 0;
           
           setReportsData({
             ...reportsData,
+            tickets: {
+              ...reportsData.tickets,
+              avg_response_time: avgResponseTime,
+              avg_resolution_time: avgResolutionTime
+            },
             departments: Array.isArray(departmentsData) ? departmentsData : [],
             sections: [],
-            roles: []
+            roles: [],
+            tickets_details: Array.isArray(ticketsData) ? ticketsData : []
           });
         } else {
           setError("خطا در دریافت اطلاعات گزارش");
@@ -211,11 +252,46 @@ const Reports = () => {
         }
       });
       
-      if (response.ok) {
+      // دریافت تیکت‌های فیلتر شده
+      const ticketsResponse = await fetch(`http://localhost:8000/api/tickets/tickets/?${params.toString()}`, {
+        headers: {
+          'Authorization': `Token ${token}`
+        }
+      });
+      
+      if (response.ok && ticketsResponse.ok) {
         const data = await response.json();
+        const ticketsData = await ticketsResponse.json();
+        
+        // محاسبه میانگین زمان پاسخگویی و حل تیکت‌ها
+        let totalResponseTime = 0;
+        let totalResolutionTime = 0;
+        let responseTimeCount = 0;
+        let resolutionTimeCount = 0;
+        
+        ticketsData.forEach(ticket => {
+          if (ticket.response_duration_minutes) {
+            totalResponseTime += ticket.response_duration_minutes;
+            responseTimeCount++;
+          }
+          if (ticket.resolution_duration_hours) {
+            totalResolutionTime += ticket.resolution_duration_hours;
+            resolutionTimeCount++;
+          }
+        });
+        
+        const avgResponseTime = responseTimeCount > 0 ? Math.round(totalResponseTime / responseTimeCount) : 0;
+        const avgResolutionTime = resolutionTimeCount > 0 ? Math.round(totalResolutionTime / resolutionTimeCount) : 0;
+        
         setReportsData(prev => ({
           ...prev,
-          ...data
+          ...data,
+          tickets: {
+            ...data.tickets,
+            avg_response_time: avgResponseTime,
+            avg_resolution_time: avgResolutionTime
+          },
+          tickets_details: Array.isArray(ticketsData) ? ticketsData : []
         }));
       } else {
         setError("خطا در دریافت اطلاعات گزارش");
@@ -257,6 +333,22 @@ const Reports = () => {
     } catch (error) {
       console.error("Error exporting to Excel:", error);
       setError("خطا در ارتباط با سرور");
+    }
+  };
+
+  // فرمت‌بندی زمان
+  const formatTime = (value, type) => {
+    if (!value) return "—";
+    if (type === 'response') {
+      if (value < 60) return `${value} دقیقه`;
+      const hours = Math.floor(value / 60);
+      const minutes = value % 60;
+      return minutes > 0 ? `${hours} ساعت و ${minutes} دقیقه` : `${hours} ساعت`;
+    } else {
+      if (value < 24) return `${value} ساعت`;
+      const days = Math.floor(value / 24);
+      const hours = value % 24;
+      return hours > 0 ? `${days} روز و ${hours} ساعت` : `${days} روز`;
     }
   };
 
@@ -452,7 +544,7 @@ const Reports = () => {
           <FaTicketAlt className="ml-2 text-blue-500" />
           وضعیت تیکت‌ها
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
           <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
             <div className="text-blue-700 font-semibold">کل تیکت‌ها</div>
             <div className="text-3xl font-bold text-blue-700">{reportsData.tickets.total}</div>
@@ -468,6 +560,24 @@ const Reports = () => {
           <div className="bg-green-50 p-4 rounded-lg border border-green-200">
             <div className="text-green-700 font-semibold">انجام شده</div>
             <div className="text-3xl font-bold text-green-700">{reportsData.tickets.done}</div>
+          </div>
+          <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
+            <div className="text-indigo-700 font-semibold flex items-center">
+              <FaClock className="ml-1" />
+              میانگین زمان پاسخ
+            </div>
+            <div className="text-2xl font-bold text-indigo-700">
+              {formatTime(reportsData.tickets.avg_response_time, 'response')}
+            </div>
+          </div>
+          <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+            <div className="text-purple-700 font-semibold flex items-center">
+              <FaHourglassHalf className="ml-1" />
+              میانگین زمان حل
+            </div>
+            <div className="text-2xl font-bold text-purple-700">
+              {formatTime(reportsData.tickets.avg_resolution_time, 'resolution')}
+            </div>
           </div>
         </div>
       </div>
@@ -491,6 +601,48 @@ const Reports = () => {
             <div className="text-purple-700 font-semibold">کل آراء</div>
             <div className="text-3xl font-bold text-purple-700">{reportsData.polls.votes}</div>
           </div>
+        </div>
+      </div>
+      
+      {/* جدول جزئیات تیکت‌ها */}
+      <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 mb-8">
+        <h2 className="text-xl font-bold mb-4 flex items-center">
+          <FaTable className="ml-2 text-indigo-500" />
+          جزئیات تیکت‌ها
+        </h2>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">عنوان تیکت</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">وضعیت</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">تاریخ ایجاد</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">تاریخ حل</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">زمان پاسخگویی</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">مدت زمان حل</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {reportsData.tickets_details.map((ticket) => (
+                <tr key={ticket.id}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{ticket.title}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{ticket.status}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {ticket.created_at_pretty || new Date(ticket.created_at).toLocaleDateString('fa-IR')}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {ticket.resolved_at_pretty || new Date(ticket.resolved_at).toLocaleDateString('fa-IR') || '—'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {formatTime(ticket.response_duration_minutes, 'response')}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {formatTime(ticket.resolution_duration_hours, 'resolution')}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
       

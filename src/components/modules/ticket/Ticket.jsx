@@ -1,6 +1,8 @@
+// modules/ticket/Ticket.jsx
+
 import React from "react";
 import { GoDotFill } from "react-icons/go";
-import { FaTicketAlt } from "react-icons/fa";
+import { FaTicketAlt, FaHourglassHalf } from "react-icons/fa";
 import { TiCalendar } from "react-icons/ti";
 import { AiOutlineTag } from "react-icons/ai";
 import { MdOutlineInfo, MdApartment, MdLock, MdPersonAdd } from "react-icons/md";
@@ -40,6 +42,15 @@ const Ticket = ({ ticket }) => {
     titleColor = "text-indigo-700";
     ticketNumberColor = "text-indigo-600";
   }
+
+  // فرمت‌بندی مدت زمان حل
+  const formatResolutionTime = (hours) => {
+    if (!hours) return "0";
+    if (hours < 24) return `${hours} ساعت`;
+    const days = Math.floor(hours / 24);
+    const remainingHours = hours % 24;
+    return remainingHours > 0 ? `${days} روز و ${remainingHours} ساعت` : `${days} روز`;
+  };
 
   return (
     <div
@@ -96,7 +107,7 @@ const Ticket = ({ ticket }) => {
           <TiCalendar className="text-slate-500" />
           <p className="text-slate-500">تاریخ ثبت:</p>
           <p className="text-slate-500">
-            {new Date(ticket.created_at).toLocaleString("fa-IR", {
+            {ticket.created_at_pretty || new Date(ticket.created_at).toLocaleString("fa-IR", {
               year: "numeric",
               month: "long",
               day: "numeric",
@@ -106,13 +117,33 @@ const Ticket = ({ ticket }) => {
           </p>
         </div>
 
-        {/* برچسب */}
+        {/* تاریخ حل */}
+        {ticket.resolved_at && (
+          <div className="flex items-center gap-1 text-xs sm:text-sm font-semibold flex-wrap break-words">
+            <TiCalendar className="text-slate-500" />
+            <p className="text-slate-500">تاریخ حل:</p>
+            <p className="text-slate-500">
+              {ticket.resolved_at_pretty || new Date(ticket.resolved_at).toLocaleString("fa-IR", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </p>
+          </div>
+        )}
+
+        {/* مدت زمان حل */}
         <div className="flex items-center gap-1 text-xs sm:text-sm font-semibold flex-wrap break-words">
-          <AiOutlineTag className="text-slate-500" />
-          <p className="text-slate-500">برچسب:</p>
-          <p className="text-slate-500">{ticket.tag_names || "—"}</p>
+          <FaHourglassHalf className="text-slate-500" />
+          <p className="text-slate-500">مدت زمان حل:</p>
+          <p className="text-slate-500">
+            {formatResolutionTime(ticket.resolution_duration_hours)}
+          </p>
         </div>
 
+        
         {/* وضعیت */}
         <div className="flex items-center gap-1 text-xs sm:text-sm font-semibold flex-wrap break-words">
           <MdOutlineInfo className="text-slate-500" />
