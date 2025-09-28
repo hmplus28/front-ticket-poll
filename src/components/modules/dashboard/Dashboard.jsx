@@ -1,18 +1,77 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { TiTicket } from "react-icons/ti";
 import { SiLimesurvey } from "react-icons/si";
 import { IoNotifications } from "react-icons/io5";
-import { FaUtensils, FaUniversity, FaChalkboardTeacher, FaGlobe, FaRobot } from "react-icons/fa";
+import { FaUtensils, FaUniversity, FaChalkboardTeacher, FaGlobe, FaRobot, FaChartBar, FaSignOutAlt } from "react-icons/fa";
+import Swal from "sweetalert2";
 
 const Dashboard = ({ mobileOpen, setMobileOpen }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [openTicketsCount, setOpenTicketsCount] = useState(0);
   const [activeUnvotedSurveysCount, setActiveUnvotedSurveysCount] = useState(0);
+  const [navItemTop, setNavItemTop] = useState([]);
   const navigate = useNavigate();
   const token = localStorage.getItem("authToken");
   const ws = useRef(null);
+
+  // تابع خروج از سیستم مشابه Header
+  const handleLogout = async () => {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
+    try {
+      const response = await fetch("http://localhost:8000/api/accounts/logout/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Token ${token}`, // اصلاح شده: استفاده از " به جای '
+        },
+        credentials: "include",
+      });
+
+      const result = await response.json();
+
+      if (result.success || response.ok) {
+        localStorage.removeItem("authToken");
+        
+        // بستن اتصال WebSocket اگر وجود دارد
+        if (ws.current) {
+          ws.current.close();
+        }
+        
+        // پاک کردن اطلاعات کاربری از state
+        setUser(null);
+        
+        Swal.fire({
+          toast: true,
+          position: "top-end",
+          icon: "success",
+          title: result.message || "با موفقیت خارج شدید",
+          showConfirmButton: false,
+          timer: 1500,
+          timerProgressBar: true,
+        }).then(() => navigate("/login"));
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "خطا",
+          text: result.error || "خطا در خروج",
+        });
+      }
+    } catch (error) {
+      console.error("خطا در ارتباط با سرور:", error);
+      Swal.fire({
+        icon: "error",
+        title: "خطا",
+        text: "ارتباط با سرور برقرار نشد",
+      });
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -37,7 +96,6 @@ const Dashboard = ({ mobileOpen, setMobileOpen }) => {
       if (ticketsRes.ok) {
         const ticketsData = await ticketsRes.json();
         const openCount = (ticketsData || []).filter(
-          // 💡 فیلتر کردن تیکت‌های 'done' نیز برای شمارش
           (t) => t.status !== "closed" && t.status !== "rejected" && t.status !== "done"
         ).length;
         setOpenTicketsCount(openCount);
@@ -66,9 +124,7 @@ const Dashboard = ({ mobileOpen, setMobileOpen }) => {
 
       const socket = new WebSocket(`ws://localhost:8000/ws/notifications/?token=${token}`);
 
-      socket.onopen = () => {
-        console.log("WebSocket connected");
-      };
+      socket.onopen = () => {};
 
       socket.onmessage = (event) => {
         const data = JSON.parse(event.data);
@@ -77,13 +133,9 @@ const Dashboard = ({ mobileOpen, setMobileOpen }) => {
         }
       };
 
-      socket.onclose = () => {
-        console.log("WebSocket disconnected");
-      };
+      socket.onclose = () => {};
 
-      socket.onerror = (error) => {
-        console.error("WebSocket error:", error);
-      };
+      socket.onerror = (error) => {};
 
       ws.current = socket;
 
@@ -98,14 +150,29 @@ const Dashboard = ({ mobileOpen, setMobileOpen }) => {
     }
   }, [navigate, token]);
 
-  const totalNotifications = openTicketsCount + activeUnvotedSurveysCount;
+  useEffect(() => {
+    if (!user) return;
 
-  const navItemTop = [
-    { name: "تیکت", path: "/tickets", icon: <TiTicket className="text-2xl" /> },
-    ...(user?.user_type === "employee" ? [{ name: "نظرسنجی", path: "/survey", icon: <SiLimesurvey className="text-2xl" /> }] : []),
-    { name: "اعلان", path: "/notifications", icon: <IoNotifications className="text-2xl" /> },
-    { name: "دستیار هوش مصنوعی", path: "/ai-assistant", icon: <FaRobot className="text-2xl text-purple-500" />, color: "text-purple-500" },
-  ];
+    let items = [
+      { name: "تیکت", path: "/tickets", icon: <TiTicket className="text-2xl" /> },
+      ...(user?.user_type === "employee" ? [{ name: "نظرسنجی", path: "/survey", icon: <SiLimesurvey className="text-2xl" /> }] : []),
+      { name: "اعلان", path: "/notifications", icon: <IoNotifications className="text-2xl" /> },
+      { name: "دستیار هوش مصنوعی", path: "/ai-assistant", icon: <FaRobot className="text-2xl text-purple-500" />, color: "text-purple-500" },
+    ];
+
+    if (user?.user_type === 'superuser') {
+      items.push({ name: "گزارش‌گیری", path: "/reports", icon: <FaChartBar className="text-2xl text-indigo-500" />, color: "text-indigo-500" });
+    }
+
+    if (user?.user_type === 'superuser') {
+      items.splice(2, 0, { name: "ساخت نظرسنجی", path: "/survey", icon: <SiLimesurvey className="text-2xl text-green-500" />, color: "text-green-500" });
+    }
+
+    setNavItemTop(items);
+
+  }, [user]);
+
+  const totalNotifications = openTicketsCount + activeUnvotedSurveysCount;
 
   const navItemBottom = [
     { name: "سامانه سلف", path: "https://self.birjandut.ac.ir", icon: <FaUtensils className="text-2xl text-yellow-500" />, color: "text-yellow-500" },
@@ -189,6 +256,9 @@ const Dashboard = ({ mobileOpen, setMobileOpen }) => {
               />
             </a>
             <span className="text-gray-800 font-bold text-xl mt-2">سامانه نظرسنجی و تیکت</span>
+            <div className="text-sm text-gray-600">
+              {user?.username} ({user?.user_type})
+            </div>
           </div>
 
           {/* منو */}
@@ -196,6 +266,17 @@ const Dashboard = ({ mobileOpen, setMobileOpen }) => {
             <ul className="flex flex-col gap-4">{renderNav(navItemTop)}</ul>
             <div className="my-8 border-t border-gray-200"></div>
             <ul className="flex flex-col gap-4">{renderNav(navItemBottom)}</ul>
+            
+            {/* دکمه خروج */}
+            <div className="mt-8">
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center h-10 p-4 rounded-lg gap-x-4 hover:bg-red-50 transition-all duration-500 ease-in-out font-medium text-red-500"
+              >
+                <FaSignOutAlt className="text-2xl" />
+                <span className="text-lg font-Estedad">خروج از سیستم</span>
+              </button>
+            </div>
           </div>
         </div>
 

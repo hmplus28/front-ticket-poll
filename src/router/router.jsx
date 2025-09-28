@@ -10,6 +10,7 @@ import Answer from "../components/templates/answer/Answer";
 import AnswerTicket from "../components/templates/answerTicket/AnswerTicket";
 import TicketsContainer from "../components/templates/tickets/TicketsContainer";
 import AddTicket from "../components/templates/addTicket/AddTicket";
+import Reports from "../components/templates/reports/Reports";
 
 // Modules
 import SurveyList from "../components/modules/survey/SurveyList";
@@ -41,8 +42,15 @@ const router = createBrowserRouter([
       { path: "notifications", element: <Notifications /> },
       { path: "notifications/survey/:id", element: <Answer /> },
       { path: "notifications/tickets/:id", element: <AnswerTicket /> },
-      { path: "survey/results/:id", element: <SurveyResults /> }
-
+      { path: "survey/results/:id", element: <SurveyResults /> },
+      { 
+        path: "reports", 
+        element: (
+          <ProtectedRoute>
+            <Reports />
+          </ProtectedRoute>
+        ) 
+      },
     ],
   },
 ]);

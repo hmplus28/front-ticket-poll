@@ -179,11 +179,16 @@ const SurveyList = () => {
     );
   }
 
+  // تابع برای بررسی اینکه آیا کاربر می‌تواند نظرسنجی ایجاد کند
+  const canCreateSurvey = () => {
+    return user.user_type === "employee" || user.user_type === "superuser";
+  };
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-blue-700">نظرسنجی‌های من</h1>
-        {user.user_type === "employee" && (
+        {canCreateSurvey() && (
           <a
             className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center"
             href="/survey/add-survey"
