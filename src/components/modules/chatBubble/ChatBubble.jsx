@@ -1,7 +1,7 @@
 import React from "react";
-import { MdDelete, MdAttachFile } from "react-icons/md";
+import { MdDelete, MdAttachFile, MdPersonAdd } from "react-icons/md";
 
-const ChatBubble = ({ message, isOwner = false, onDelete, attachments = [], createdAt, username, isInitial }) => {
+const ChatBubble = ({ message, isOwner = false, onDelete, attachments = [], createdAt, username, isInitial, isReferral = false }) => {
   return (
     <div className={`w-full flex ${isOwner ? "justify-end" : "justify-start"}`}>
       <div className={`max-w-[80%] sm:max-w-md flex flex-col ${isOwner ? "items-end" : "items-start"}`}>
@@ -16,9 +16,17 @@ const ChatBubble = ({ message, isOwner = false, onDelete, attachments = [], crea
         {/* حباب اصلی چت */}
         <div 
           className={`relative px-5 py-4 shadow-md break-words group 
-            ${isOwner ? "bg-blue-500 text-white rounded-t-xl rounded-l-xl rounded-br-xl rounded-bl-none" 
-                       : "bg-gray-200 text-gray-900 rounded-t-xl rounded-r-xl rounded-bl-xl rounded-br-none"}`}
+            ${isReferral ? "bg-indigo-100 border-l-4 border-indigo-500" : 
+              (isOwner ? "bg-blue-500 text-white rounded-t-xl rounded-l-xl rounded-br-xl rounded-bl-none" 
+                       : "bg-gray-200 text-gray-900 rounded-t-xl rounded-r-xl rounded-bl-xl rounded-br-none")}`}
         >
+          {/* آیکون ارجاع */}
+          {isReferral && (
+            <div className="flex items-center gap-1 mb-2 text-indigo-700">
+              <MdPersonAdd />
+              <span className="font-semibold">پیام ارجاع:</span>
+            </div>
+          )}
           
           <p className="text-base sm:text-lg whitespace-pre-wrap">{message}</p>
 

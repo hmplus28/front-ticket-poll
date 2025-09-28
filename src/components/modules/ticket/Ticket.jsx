@@ -3,7 +3,7 @@ import { GoDotFill } from "react-icons/go";
 import { FaTicketAlt } from "react-icons/fa";
 import { TiCalendar } from "react-icons/ti";
 import { AiOutlineTag } from "react-icons/ai";
-import { MdOutlineInfo, MdApartment, MdLock } from "react-icons/md";
+import { MdOutlineInfo, MdApartment, MdLock, MdPersonAdd } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
 
 const Ticket = ({ ticket }) => {
@@ -12,6 +12,7 @@ const Ticket = ({ ticket }) => {
   const isRejected = ticket.status === "rejected";
   const isClosed = ticket.status === "closed";
   const isDone = ticket.status === "done";
+  const isReferred = ticket.referred_to !== null && ticket.referred_to !== undefined;
 
   // تعیین رنگ‌ها بر اساس وضعیت
   let borderColor = "border-slate-300";
@@ -33,6 +34,11 @@ const Ticket = ({ ticket }) => {
     bgColor = "bg-gray-100";
     titleColor = "text-gray-600";
     ticketNumberColor = "text-gray-500";
+  } else if (isReferred) {
+    borderColor = "border-indigo-200";
+    bgColor = "bg-indigo-50";
+    titleColor = "text-indigo-700";
+    ticketNumberColor = "text-indigo-600";
   }
 
   return (
@@ -50,6 +56,9 @@ const Ticket = ({ ticket }) => {
             </p>
             {(isClosed || isRejected) && (
               <MdLock className="text-gray-400 w-5 h-5" title="تیکت بسته یا رد شده" />
+            )}
+            {isReferred && (
+              <MdPersonAdd className="text-indigo-500 w-5 h-5" title="تیکت ارجاع داده شده" />
             )}
           </div>
 
@@ -110,6 +119,15 @@ const Ticket = ({ ticket }) => {
           <p className="text-slate-500">وضعیت:</p>
           <p className="text-slate-500">{ticket.status}</p>
         </div>
+
+        {/* اطلاعات ارجاع */}
+        {isReferred && (
+          <div className="flex items-center gap-1 text-xs sm:text-sm font-semibold flex-wrap break-words">
+            <MdPersonAdd className="text-indigo-500" />
+            <p className="text-indigo-500">ارجاع به:</p>
+            <p className="text-indigo-500">{ticket.referred_to?.username || "—"}</p>
+          </div>
+        )}
       </div>
     </div>
   );
