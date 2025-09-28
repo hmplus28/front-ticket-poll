@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { FaPoll, FaBan } from "react-icons/fa";
 
 const AddSurvey = () => {
   const navigate = useNavigate();
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [departments, setDepartments] = useState([]);
   const [sections, setSections] = useState([]);
   const [roles, setRoles] = useState([]);
@@ -15,34 +18,64 @@ const AddSurvey = () => {
     options: ["", "", "", ""],
   });
 
-  const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState(null);
   const [messageType, setMessageType] = useState("");
-
   const token = localStorage.getItem("authToken");
 
-  // دریافت داده‌های اولیه
   useEffect(() => {
     if (!token) {
       navigate("/login");
       return;
     }
 
-    const fetchData = async () => {
+    const fetchUser = async () => {
+      try {
+        const headers = { 
+          'Content-Type': 'application/json',
+          'Authorization': `Token ${token}`
+        };
+        const res = await fetch("http://localhost:8000/api/accounts/profile/", { headers });
+        
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        
+        const data = await res.json();
+        setUser(data);
+        
+        // بررسی اینکه آیا کاربر مجاز به ایجاد نظرسنجی است یا خیر
+        if (!((data.user_type === "employee" && data.can_create_poll) || data.user_type === "superuser")) {
+          navigate("/survey");
+        }
+      } catch (err) {
+        console.error("Failed to fetch user:", err);
+        navigate("/login");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const fetchDepartments = async () => {
       try {
         const headers = { Authorization: `Token ${token}` };
         const depRes = await fetch("http://localhost:8000/api/tickets/departments/", { headers });
         const deps = await depRes.json();
         setDepartments(Array.isArray(deps) ? deps : []);
       } catch (err) {
-        console.error("Failed to fetch initial data:", err);
+        console.error("Failed to fetch departments:", err);
         setMessage("خطا در بارگذاری اطلاعات دپارتمان‌ها.");
         setMessageType("error");
-      } finally {
-        setLoading(false);
       }
     };
-    fetchData();
+
+    const loadData = async () => {
+      setLoading(true);
+      await fetchUser();
+      await fetchDepartments();
+      setLoading(false);
+    };
+
+    loadData();
   }, [navigate, token]);
 
   // دریافت بخش‌ها (برای دپارتمان‌های غیردانشجویی)
@@ -201,6 +234,18 @@ const AddSurvey = () => {
     return (
       <div className="min-h-screen flex items-center justify-center font-Estedad">
         در حال بارگذاری...
+      </div>
+    );
+  }
+
+  if (!user || !((user.user_type === "employee" && user.can_create_poll) || user.user_type === "superuser")) {
+    return (
+      <div className="min-h-screen flex items-center justify-center font-Estedad">
+        <div className="text-center">
+          <FaBan className="mx-auto text-4xl text-red-500 mb-4" />
+          <h2 className="text-xl font-bold text-red-600">عدم مجوز دسترسی</h2>
+          <p className="text-gray-600 mt-2">شما مجاز به ایجاد نظرسنجی نیستید.</p>
+        </div>
       </div>
     );
   }

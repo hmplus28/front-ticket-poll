@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { FaPoll, FaUsers, FaClock, FaTrashAlt, FaLock, FaCheckCircle } from "react-icons/fa";
+import { FaPoll, FaUsers, FaClock, FaTrashAlt, FaLock, FaCheckCircle, FaBan } from "react-icons/fa";
 
 const SurveyCard = ({ poll, user, onAction }) => {
   const isOwner = poll.created_by?.id === user?.id;
@@ -181,20 +181,24 @@ const SurveyList = () => {
 
   // تابع برای بررسی اینکه آیا کاربر می‌تواند نظرسنجی ایجاد کند
   const canCreateSurvey = () => {
-    return user.user_type === "employee" || user.user_type === "superuser";
+    return (user.user_type === "employee" && user.can_create_poll) || user.user_type === "superuser";
   };
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-blue-700">نظرسنجی‌های من</h1>
-        {canCreateSurvey() && (
+        {canCreateSurvey() ? (
           <a
             className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center"
             href="/survey/add-survey"
           >
             <FaPoll className="mr-2" /> ایجاد نظرسنجی
           </a>
+        ) : (
+          <div className="px-6 py-3 bg-gray-200 text-gray-500 font-medium rounded-lg flex items-center">
+            <FaBan className="mr-2" /> عدم مجوز ایجاد نظرسنجی
+          </div>
         )}
       </div>
       
@@ -214,7 +218,11 @@ const SurveyList = () => {
               <FaPoll />
             </div>
             <p className="text-xl text-gray-500">هنوز نظرسنجی ایجاد نکرده‌اید.</p>
-            <p className="text-gray-400 mt-2">برای شروع، یک نظرسنجی جدید بسازید!</p>
+            {canCreateSurvey() ? (
+              <p className="text-gray-400 mt-2">برای شروع، یک نظرسنجی جدید بسازید!</p>
+            ) : (
+              <p className="text-gray-400 mt-2">شما مجاز به ایجاد نظرسنجی نیستید.</p>
+            )}
           </div>
         )}
       </div>
