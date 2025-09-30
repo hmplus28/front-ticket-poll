@@ -16,7 +16,10 @@ import {
   FaTimes, 
   FaClock, 
   FaHourglassHalf,
-  FaArrowRight
+  FaArrowRight,
+  FaSearch,
+  FaChevronDown,
+  FaChevronUp
 } from "react-icons/fa";
 
 const Reports = () => {
@@ -44,6 +47,7 @@ const Reports = () => {
     sections: [],
     roles: [],
     tickets_details: [],
+    polls_details: [],
   });
     
   const [loading, setLoading] = useState(true);
@@ -56,6 +60,12 @@ const Reports = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [selectedReportType, setSelectedReportType] = useState('tickets');
+  
+  // State های جدید برای جستجو و نمایش جزئیات
+  const [ticketSearch, setTicketSearch] = useState('');
+  const [pollSearch, setPollSearch] = useState('');
+  const [showAllTickets, setShowAllTickets] = useState(false);
+  const [showAllPolls, setShowAllPolls] = useState(false);
     
   const token = localStorage.getItem("authToken");
 
@@ -79,17 +89,25 @@ const Reports = () => {
           }
         });
                 
-        // دریافت جزئیات تیکت‌ها
+        // دریافت جزئیات تیکت‌ها - بدون فیلتر کاربر
         const ticketsRes = await fetch("http://localhost:8000/api/tickets/tickets/", {
           headers: {
             'Authorization': `Token ${token}`
           }
         });
+        
+        // دریافت جزئیات نظرسنجی‌ها - بدون فیلتر کاربر
+        const pollsRes = await fetch("http://localhost:8000/api/polls/", {
+          headers: {
+            'Authorization': `Token ${token}`
+          }
+        });
                 
-        if (reportsRes.ok && departmentsRes.ok && ticketsRes.ok) {
+        if (reportsRes.ok && departmentsRes.ok && ticketsRes.ok && pollsRes.ok) {
           const reportsData = await reportsRes.json();
           const departmentsData = await departmentsRes.json();
           const ticketsData = await ticketsRes.json();
+          const pollsData = await pollsRes.json();
           
           // محاسبه آمار زمان حل تیکت‌ها
           const timeStats = calculateTimeStats(ticketsData);
@@ -103,7 +121,8 @@ const Reports = () => {
             departments: Array.isArray(departmentsData) ? departmentsData : [],
             sections: [],
             roles: [],
-            tickets_details: Array.isArray(ticketsData) ? ticketsData : []
+            tickets_details: Array.isArray(ticketsData) ? ticketsData : [],
+            polls_details: Array.isArray(pollsData) ? pollsData : [],
           });
         } else {
           setError("خطا در دریافت اطلاعات گزارش");
@@ -250,16 +269,24 @@ const Reports = () => {
         }
       });
             
-      // دریافت تیکت‌های فیلتر شده
+      // دریافت تیکت‌های فیلتر شده - بدون فیلتر کاربر
       const ticketsResponse = await fetch(`http://localhost:8000/api/tickets/tickets/?${params.toString()}`, {
         headers: {
           'Authorization': `Token ${token}`
         }
       });
+      
+      // دریافت نظرسنجی‌های فیلتر شده - بدون فیلتر کاربر
+      const pollsResponse = await fetch(`http://localhost:8000/api/polls/?${params.toString()}`, {
+        headers: {
+          'Authorization': `Token ${token}`
+        }
+      });
             
-      if (response.ok && ticketsResponse.ok) {
+      if (response.ok && ticketsResponse.ok && pollsResponse.ok) {
         const data = await response.json();
         const ticketsData = await ticketsResponse.json();
+        const pollsData = await pollsResponse.json();
                 
         // محاسبه آمار زمان‌ها برای داده‌های فیلتر شده
         const timeStats = calculateTimeStats(ticketsData);
@@ -271,7 +298,8 @@ const Reports = () => {
             ...data.tickets,
             ...timeStats
           },
-          tickets_details: Array.isArray(ticketsData) ? ticketsData : []
+          tickets_details: Array.isArray(ticketsData) ? ticketsData : [],
+          polls_details: Array.isArray(pollsData) ? pollsData : [],
         }));
       } else {
         setError("خطا در دریافت اطلاعات گزارش");
@@ -319,18 +347,24 @@ const Reports = () => {
 
   // فرمت‌بندی زمان - فقط برای زمان حل
   const formatTime = (value, type) => {
-    if (!value || value === 0 || value === "0") return "—";
+  if (!value || value === 0 || value === "0") return "—";
+
+  if (type === 'resolution') {
+    // اگر مقدار کمتر از 24 ساعت باشه، عدد رو مستقیم با 3 رقم اعشار نشون بده
+    if (value < 24) return `${value.toFixed(3)} ساعت`;
     
-    // فقط نوع resolution را پشتیبانی می‌کنیم
-    if (type === 'resolution') {
-      if (value < 24) return `${value} ساعت`;
-      const days = Math.floor(value / 24);
-      const hours = value % 24;
-      return hours > 0 ? `${days} روز و ${hours} ساعت` : `${days} روز`;
-    }
+    const days = Math.floor(value / 24);
+    const hours = value % 24;
     
-    return "—";
-  };
+    // محدود کردن ساعت به 3 رقم اعشار
+    const hoursFormatted = hours.toFixed(3);
+    
+    return hours > 0 ? `${days} روز و ${hoursFormatted} ساعت` : `${days} روز`;
+  }
+
+  return "—";
+};
+
 
   // تبدیل وضعیت به فارسی
   const getStatusInPersian = (status) => {
@@ -343,6 +377,34 @@ const Reports = () => {
     };
     return statusMap[status] || status;
   };
+
+  // فیلتر کردن تیکت‌ها بر اساس جستجو
+  const filteredTickets = reportsData.tickets_details.filter(ticket => {
+    if (!ticket) return false;
+    
+    const title = ticket.title || '';
+    const description = ticket.description || '';
+    const searchTerm = ticketSearch.toLowerCase();
+    
+    return title.toLowerCase().includes(searchTerm) || 
+           description.toLowerCase().includes(searchTerm);
+  });
+
+  // فیلتر کردن نظرسنجی‌ها بر اساس جستجو
+  const filteredPolls = reportsData.polls_details.filter(poll => {
+    if (!poll) return false;
+    
+    const question = poll.question || '';
+    const searchTerm = pollSearch.toLowerCase();
+    
+    return question.toLowerCase().includes(searchTerm);
+  });
+
+  // تعیین تعداد تیکت‌ها برای نمایش
+  const ticketsToShow = showAllTickets ? filteredTickets : filteredTickets.slice(0, 10);
+  
+  // تعیین تعداد نظرسنجی‌ها برای نمایش
+  const pollsToShow = showAllPolls ? filteredPolls : filteredPolls.slice(0, 10);
 
   if (loading) {
     return (
@@ -649,10 +711,25 @@ const Reports = () => {
             
       {/* جدول جزئیات تیکت‌ها */}
       <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-200 mb-10">
-        <h2 className="text-xl font-bold mb-6 flex items-center">
-          <FaTable className="ml-2 text-indigo-500" />
-          جزئیات تیکت‌ها
-        </h2>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold flex items-center">
+            <FaTable className="ml-2 text-indigo-500" />
+            جزئیات تیکت‌ها
+          </h2>
+          <div className="flex space-x-3">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="جستجو در تیکت‌ها..."
+                value={ticketSearch}
+                onChange={(e) => setTicketSearch(e.target.value)}
+                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <FaSearch className="absolute left-3 top-3 text-gray-400" />
+            </div>
+          </div>
+        </div>
+        
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -665,9 +742,11 @@ const Reports = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {reportsData.tickets_details.map((ticket) => (
+              {ticketsToShow.map((ticket) => (
                 <tr key={ticket.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{ticket.title}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {ticket.title || 'بدون عنوان'}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
                       ${ticket.status === 'done' ? 'bg-green-100 text-green-800' : 
@@ -678,10 +757,10 @@ const Reports = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {ticket.created_at_pretty || new Date(ticket.created_at).toLocaleDateString('fa-IR')}
+                    {ticket.created_at_pretty || (ticket.created_at ? new Date(ticket.created_at).toLocaleDateString('fa-IR') : '—')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {ticket.resolved_at_pretty || new Date(ticket.resolved_at).toLocaleDateString('fa-IR') || '—'}
+                    {ticket.resolved_at_pretty || (ticket.resolved_at ? new Date(ticket.resolved_at).toLocaleDateString('fa-IR') : '—')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {formatTime(ticket.resolution_duration_hours, 'resolution')}
@@ -691,34 +770,119 @@ const Reports = () => {
             </tbody>
           </table>
         </div>
+        
+        {filteredTickets.length > 10 && (
+          <div className="mt-4 text-center">
+            <button
+              onClick={() => setShowAllTickets(!showAllTickets)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center mx-auto"
+            >
+              {showAllTickets ? (
+                <>
+                  <FaChevronUp className="ml-2" />
+                  نمایش کمتر
+                </>
+              ) : (
+                <>
+                  <FaChevronDown className="ml-2" />
+                  مشاهده همه تیکت‌ها ({filteredTickets.length})
+                </>
+              )}
+            </button>
+          </div>
+        )}
       </div>
             
-      {/* جدول آمار دپارتمان‌ها */}
+      {/* جدول جزئیات نظرسنجی‌ها */}
       <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-200">
-        <h2 className="text-xl font-bold mb-6 flex items-center">
-          <FaTable className="ml-2 text-indigo-500" />
-          آمار دپارتمان‌ها
-        </h2>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold flex items-center">
+            <FaTable className="ml-2 text-indigo-500" />
+            جزئیات نظرسنجی‌ها
+          </h2>
+          <div className="flex space-x-3">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="جستجو در نظرسنجی‌ها..."
+                value={pollSearch}
+                onChange={(e) => setPollSearch(e.target.value)}
+                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <FaSearch className="absolute left-3 top-3 text-gray-400" />
+            </div>
+          </div>
+        </div>
+        
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">دپارتمان</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">تعداد کاربران</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">تعداد تیکت‌ها</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">سوال</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">نوع</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">وضعیت</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">تعداد آرا</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">تاریخ ایجاد</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {reportsData.departments.map((dept) => (
-                <tr key={dept.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{dept.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{dept.users}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{dept.tickets}</td>
+              {pollsToShow.length > 0 ? (
+                pollsToShow.map((poll) => (
+                  <tr key={poll.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {poll.question || 'بدون سوال'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {poll.question_type === 'single_choice' ? 'تک انتخابی' : 
+                       poll.question_type === 'multiple_choice' ? 'چند انتخابی' : 
+                       poll.question_type === 'descriptive' ? 'تشریحی' : 
+                       poll.question_type === 'rating' ? 'امتیازی' : 'بله/خیر'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                        ${poll.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                        {poll.is_active ? 'فعال' : 'غیرفعال'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {poll.total_votes || poll.votes_count || poll.votes || 0}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {poll.created_at ? new Date(poll.created_at).toLocaleDateString('fa-IR') : '—'}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="5" className="px-6 py-4 text-center text-sm text-gray-500">
+                    هیچ نظرسنجی‌ای یافت نشد
+                  </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
+        
+        {filteredPolls.length > 10 && (
+          <div className="mt-4 text-center">
+            <button
+              onClick={() => setShowAllPolls(!showAllPolls)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center mx-auto"
+            >
+              {showAllPolls ? (
+                <>
+                  <FaChevronUp className="ml-2" />
+                  نمایش کمتر
+                </>
+              ) : (
+                <>
+                  <FaChevronDown className="ml-2" />
+                  مشاهده همه نظرسنجی‌ها ({filteredPolls.length})
+                </>
+              )}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
