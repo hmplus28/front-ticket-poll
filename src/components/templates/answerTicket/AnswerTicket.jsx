@@ -71,6 +71,7 @@ const AnswerTicket = () => {
 
     // اضافه برای چک نوع کاربر
     const [currentUserType, setCurrentUserType] = useState(null);
+    const [userPermissions, setUserPermissions] = useState(null);
 
     const wsRef = useRef(null);
     const currentUserId = useRef(null);
@@ -140,6 +141,8 @@ const AnswerTicket = () => {
                     id: id ? String(id) : null,
                     username: username ? String(username) : null,
                     user_type: userType,
+                    has_perm_tickets_view_report_tickets: data.has_perm_tickets_view_report_tickets || false,
+                    is_superuser: data.is_superuser || false
                 };
             }
         } catch (e) {
@@ -247,6 +250,7 @@ const AnswerTicket = () => {
             let serverUser = null;
             try {
                 serverUser = await fetchCurrentUserFromServer();
+                setUserPermissions(serverUser);
             } catch (e) {
                 serverUser = null;
             }
@@ -643,6 +647,18 @@ const AnswerTicket = () => {
         fetchUsers();
     }, [selectedDepartment, selectedSection, selectedRole]);
 
+    // تبدیل وضعیت به فارسی
+    const getStatusInPersian = (status) => {
+        const statusMap = {
+            'open': 'باز',
+            'in_progress': 'در حال بررسی',
+            'done': 'انجام شده',
+            'rejected': 'رد شده',
+            'closed': 'بسته شده'
+        };
+        return statusMap[status] || status;
+    };
+
     if (loading)
         return (
             <div className="flex justify-center items-center h-screen">
@@ -704,20 +720,11 @@ const AnswerTicket = () => {
                             <span className="font-semibold">دپارتمان:</span>
                             <span>{ticket.department_name || "—"}</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <MdApartment className="text-indigo-500" />
-                            <span className="font-semibold">بخش:</span>
-                            <span>{ticket.sections_names || "—"}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <MdApartment className="text-indigo-500" />
-                            <span className="font-semibold">نقش:</span>
-                            <span>{ticket.roles_names || "—"}</span>
-                        </div>
+
                         <div className="flex items-center gap-2">
                             <MdOutlineInfo className="text-orange-500" />
                             <span className="font-semibold">وضعیت:</span>
-                            <span>{ticket.status}</span>
+                            <span>{getStatusInPersian(ticket.status)}</span>
                         </div>
                         {/* نمایش اطلاعات ارجاع */}
                         {ticket.referred_to && (
@@ -746,11 +753,6 @@ const AnswerTicket = () => {
                                     minute: "2-digit",
                                 })}
                             </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <AiOutlineTag className="text-pink-500" />
-                            <span className="font-semibold">برچسب‌ها:</span>
-                            <span>{ticket.tag_names || "—"}</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <span className="font-semibold">اولویت:</span>
@@ -848,7 +850,7 @@ const AnswerTicket = () => {
                                 <option value="" disabled>انتخاب کنید...</option>
                                 {availableStatuses.map((status) => (
                                     <option key={status} value={status}>
-                                        {status}
+                                        {getStatusInPersian(status)}
                                     </option>
                                 ))}
                             </select>

@@ -1,6 +1,6 @@
+// src/router/router.jsx
 import React from "react";
 import { createBrowserRouter } from "react-router-dom";
-
 // Templates
 import LoginForm from "../components/templates/login/LoginForm";
 import Home from "../components/templates/home/Home";
@@ -11,15 +11,14 @@ import AnswerTicket from "../components/templates/answerTicket/AnswerTicket";
 import TicketsContainer from "../components/templates/tickets/TicketsContainer";
 import AddTicket from "../components/templates/addTicket/AddTicket";
 import Reports from "../components/templates/reports/Reports";
-
 // Modules
 import SurveyList from "../components/modules/survey/SurveyList";
 import AddSurvey from "../components/modules/survey/AddSurvey";
 import SurveyDetail from "../components/modules/survey/SurveyDetail";
 import SurveyResults from "../components/modules/survey/SurveyResults.jsx";
+import TicketLifecycle from "../components/modules/ticket/TicketLifecycle";
 // Common
 import ProtectedRoute from "../components/common/ProtectedRoute";
-
 const router = createBrowserRouter([
   {
     path: "/login",
@@ -51,8 +50,15 @@ const router = createBrowserRouter([
           </ProtectedRoute>
         ) 
       },
+      { 
+        path: "reports/ticket-lifecycle/:ticketId", 
+        element: (
+          <ProtectedRoute>
+            <TicketLifecycle />
+          </ProtectedRoute>
+        ) 
+      },
     ],
   },
 ]);
-
 export default router;

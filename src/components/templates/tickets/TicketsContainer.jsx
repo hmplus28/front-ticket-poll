@@ -1,9 +1,11 @@
+// src/components/templates/tickets/TicketsContainer.jsx
 import React, { useState, useEffect } from "react";
 import Tickets from "./Tickets.jsx";
 
 const TicketsContainer = () => {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [userPermissions, setUserPermissions] = useState(null);
 
   useEffect(() => {
     const fetchTickets = async () => {
@@ -13,6 +15,22 @@ const TicketsContainer = () => {
           console.error("توکن ورود پیدا نکرده است");
           setLoading(false);
           return;
+        }
+
+        // دریافت اطلاعات کاربر و مجوزهای آن
+        const userRes = await fetch("http://localhost:8000/api/accounts/profile/", {
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Token ${token}`,
+          },
+        });
+        
+        if (userRes.ok) {
+          const userData = await userRes.json();
+          setUserPermissions(userData);
+          
+          // ذخیره اطلاعات کاربر در localStorage برای استفاده در سایر کامپوننت‌ها
+          localStorage.setItem("userData", JSON.stringify(userData));
         }
 
         const res = await fetch(
@@ -53,7 +71,7 @@ const TicketsContainer = () => {
   }
 
   // همیشه Tickets رو رندر می‌کنیم، حتی وقتی خالیه
-  return <Tickets tickets={tickets} showAddButton={true} />;
+  return <Tickets tickets={tickets} userPermissions={userPermissions} showAddButton={true} />;
 };
 
 export default TicketsContainer;

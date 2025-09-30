@@ -1,3 +1,4 @@
+// src/components/modules/dashboard/Dashboard.jsx
 import React, { useState, useEffect, useRef } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { TiTicket } from "react-icons/ti";
@@ -29,7 +30,7 @@ const Dashboard = ({ mobileOpen, setMobileOpen }) => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Token ${token}`, // اصلاح شده: استفاده از " به جای '
+          "Authorization": `Token ${token}`,
         },
         credentials: "include",
       });
@@ -89,6 +90,9 @@ const Dashboard = ({ mobileOpen, setMobileOpen }) => {
       if (userRes.ok) {
         const userData = await userRes.json();
         setUser(userData);
+        
+        // ذخیره اطلاعات کاربر در localStorage برای استفاده در سایر کامپوننت‌ها
+        localStorage.setItem("userData", JSON.stringify(userData));
       } else {
         throw new Error("Failed to fetch user data");
       }
@@ -160,7 +164,8 @@ const Dashboard = ({ mobileOpen, setMobileOpen }) => {
       { name: "دستیار هوش مصنوعی", path: "/ai-assistant", icon: <FaRobot className="text-2xl text-purple-500" />, color: "text-purple-500" },
     ];
 
-    if (user?.user_type === 'superuser') {
+    // اضافه کردن دکمه گزارش‌گیری برای کاربران با دسترسی
+    if (user?.is_superuser || user?.view_report_tickets) {
       items.push({ name: "گزارش‌گیری", path: "/reports", icon: <FaChartBar className="text-2xl text-indigo-500" />, color: "text-indigo-500" });
     }
 
