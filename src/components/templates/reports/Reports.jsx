@@ -54,6 +54,8 @@ const Reports = () => {
     role: ''
   });
   const [showFilters, setShowFilters] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [selectedReportType, setSelectedReportType] = useState('tickets');
     
   const token = localStorage.getItem("authToken");
 
@@ -282,14 +284,14 @@ const Reports = () => {
     }
   };
 
-  const exportToExcel = async () => {
+  const exportToExcel = async (reportType) => {
     try {
       const params = new URLSearchParams();
+      params.append('type', reportType);
       if (filters.department) params.append('department', filters.department);
       if (filters.section) params.append('section', filters.section);
       if (filters.role) params.append('role', filters.role);
             
-      // تلاش برای دریافت خروجی اکسل از API
       const response = await fetch(`http://localhost:8000/api/reports/api/export-excel/?${params.toString()}`, {
         headers: {
           'Authorization': `Token ${token}`
@@ -301,20 +303,17 @@ const Reports = () => {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `گزارش_${new Date().toLocaleDateString('fa-IR')}.xlsx`;
+        a.download = `گزارش_${reportType}_${new Date().toLocaleDateString('fa-IR')}.xlsx`;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
       } else {
-        // اگر API خروجی اکسل نداشت، کاربر را به صفحه گزارش ادمین هدایت کن
-        console.log("Redirecting to admin reports page");
-        window.open('/admin/reports/report/', '_blank');
+        throw new Error('خطا در دریافت فایل اکسل');
       }
     } catch (error) {
       console.error("Error exporting to Excel:", error);
-      // در صورت خطا، کاربر را به صفحه گزارش ادمین هدایت کن
-      window.open('/admin/reports/report/', '_blank');
+      alert('خطا در خروجی گرفتن اکسل');
     }
   };
 
@@ -382,8 +381,9 @@ const Reports = () => {
             <FaFilter className="ml-2" />
             {showFilters ? 'مخفی کردن فیلترها' : 'نمایش فیلترها'}
           </button>
+          
           <button 
-            onClick={exportToExcel}
+            onClick={() => setShowExportModal(true)}
             className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center"
           >
             <FaFileExcel className="ml-2" />
@@ -391,6 +391,59 @@ const Reports = () => {
           </button>
         </div>
       </div>
+            
+      {/* مودال انتخاب نوع گزارش */}
+      {showExportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-xl font-bold mb-4">انتخاب نوع گزارش</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">نوع گزارش:</label>
+                <div className="space-y-2">
+                  {[
+                    { value: 'tickets', label: 'گزارش تیکت‌ها' },
+                    { value: 'users', label: 'گزارش کاربران' },
+                    { value: 'polls', label: 'گزارش نظرسنجی‌ها' }
+                  ].map((option) => (
+                    <div key={option.value} className="flex items-center">
+                      <input
+                        type="radio"
+                        id={option.value}
+                        name="reportType"
+                        value={option.value}
+                        checked={selectedReportType === option.value}
+                        onChange={() => setSelectedReportType(option.value)}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                      />
+                      <label htmlFor={option.value} className="mr-2 block text-sm text-gray-900">
+                        {option.label}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+              >
+                انصراف
+              </button>
+              <button
+                onClick={() => {
+                  setShowExportModal(false);
+                  exportToExcel(selectedReportType);
+                }}
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+              >
+                تایید و دانلود
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
             
       {/* بخش فیلترها */}
       {showFilters && (
@@ -594,7 +647,7 @@ const Reports = () => {
         </div>
       </div>
             
-      {/* جدول جزئیات تیکت‌ها - حذف ستون زمان پاسخگویی */}
+      {/* جدول جزئیات تیکت‌ها */}
       <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-200 mb-10">
         <h2 className="text-xl font-bold mb-6 flex items-center">
           <FaTable className="ml-2 text-indigo-500" />
