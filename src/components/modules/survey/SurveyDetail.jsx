@@ -25,7 +25,8 @@ const SurveyDetail = () => {
       };
 
       try {
-        const res = await fetch(`http://localhost:8000/api/polls/polls/${id}/details/`, { headers });
+        // *** تغییر: URL صحیح برای دریافت جزئیات نظرسنجی ***
+        const res = await fetch(`http://localhost:8000/api/polls/polls/${id}/`, { headers });
         
         if (res.status === 401 || res.status === 403) {
             setError("توکن شما منقضی شده است. لطفاً دوباره وارد شوید.");
@@ -39,8 +40,6 @@ const SurveyDetail = () => {
         
         const data = await res.json();
         setPoll(data);
-
-        // بررسی وضعیت رأی‌دهی کاربر با استفاده از داده‌های دریافتی
         setHasVoted(data.user_voted);
 
       } catch (err) {
@@ -55,7 +54,7 @@ const SurveyDetail = () => {
     // مرحله اول: گرفتن تأیید از کاربر
     const isConfirmed = window.confirm("آیا از ثبت پاسخ خود اطمینان دارید؟");
     if (!isConfirmed) {
-      return; // اگر کاربر "لغو" را بزند، ادامه نمی‌دهد
+      return;
     }
 
     const token = localStorage.getItem("authToken");
@@ -73,7 +72,7 @@ const SurveyDetail = () => {
     try {
       let payload = {};
       if (poll.question_type === "descriptive") {
-        if (!answer) {
+        if (!answer.trim()) {
           alert("لطفا پاسخ خود را وارد کنید.");
           return;
         }
@@ -92,18 +91,19 @@ const SurveyDetail = () => {
         body: JSON.stringify(payload),
       });
 
-      if (response.status === 401 || response.status === 403) {
-        throw new Error("توکن شما منقضی شده است. لطفاً دوباره وارد شوید.");
-      }
-      
+      const errData = await response.json(); // ابتدا داده‌های خطا را بخوان
+
       if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || "خطا در ثبت رأی");
+        // *** تغییر: مدیریت خطای خاص برای 403 ***
+        if (response.status === 403 && errData.error) {
+          throw new Error(errData.error); // نمایش خطای دقیق از بک‌اند
+        }
+        throw new Error(errData.error || errData.detail || "خطا در ثبت رأی");
       }
 
       alert("رأی شما با موفقیت ثبت شد!");
-      setHasVoted(true); // به‌روزرسانی وضعیت در فرانت‌اند
-      navigate("/notifications"); // بازگشت به صفحه نوتیفیکیشن‌ها
+      setHasVoted(true);
+      navigate("/notifications");
 
     } catch (err) {
       alert(err.message);
@@ -116,7 +116,9 @@ const SurveyDetail = () => {
   return (
     <div className="container mx-auto p-4 max-w-2xl">
       <h1 className="text-2xl font-bold text-blue-120 mb-2">{poll.question}</h1>
-      <p className="text-gray-600 mb-4">ایجاد شده توسط: {poll.created_by.username}</p>
+      
+      {/* *** تغییر: استفاده از فیلد جدید creator_full_name *** */}
+      <p className="text-gray-600 mb-4">ایجاد شده توسط: {poll.creator_full_name}</p>
 
       {hasVoted ? (
         <p className="text-green-600 font-bold mt-4">شما قبلاً در این نظرسنجی رأی داده‌اید.</p>

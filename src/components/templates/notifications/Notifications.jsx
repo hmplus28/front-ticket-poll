@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { TiTicket } from "react-icons/ti";
 import { SiLimesurvey } from "react-icons/si";
-import Tickets from "../tickets/Tickets";
+import Tickets from "../tickets/Tickets"; // فرض می‌کنیم این کامپوننت در مسیر صحیح قرار دارد
 import { useNavigate } from "react-router-dom";
 
 // نمایش لیست نظرسنجی‌ها به صورت کارت مشابه تیکت
@@ -18,7 +18,7 @@ const SectionSurveysList = ({ surveys }) => {
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {sortedSurveys.map((survey) => {
         const isActive = survey.is_active;
-        const totalVotes = survey.pollresult?.total_votes || 0;
+        const totalVotes = survey.results?.total_votes || 0; // استفاده از فیلد results
         const hasVoted = survey.user_voted;
 
         return (
@@ -41,9 +41,12 @@ const SectionSurveysList = ({ surveys }) => {
               </span>
             </div>
 
+            {/* *** تغییر کلیدی در این خط *** */}
             <p className={`text-sm ${hasVoted ? "text-gray-400" : "text-gray-500"}`}>
-              توسط: {survey.created_by?.first_name || 'ناشناس'} {survey.created_by?.last_name || ''}
+              توسط: <span className="font-medium">{survey.creator_full_name}</span>
             </p>
+            {/* *** پایان تغییر *** */}
+
             <p className={`text-xs mt-1 ${hasVoted ? "text-gray-400" : "text-gray-400"}`}>
               نوع: {survey.question_type === "descriptive" ? "تشریحی" : "چندگزینه‌ای"}
             </p>
